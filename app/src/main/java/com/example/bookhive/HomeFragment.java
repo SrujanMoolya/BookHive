@@ -11,18 +11,23 @@ import androidx.fragment.app.Fragment;
 import com.example.bookhive.databinding.FragmentHomeBinding;
 import com.example.bookhive.databinding.ItemCategoryBinding;
 import com.example.bookhive.databinding.ItemBookBinding;
+import com.google.firebase.database.*;
+import com.bumptech.glide.Glide;
 import java.util.ArrayList;
 import java.util.List;
 
 public class HomeFragment extends Fragment {
     private FragmentHomeBinding binding;
+    private List<Book> allBooks = new ArrayList<>();
+    private BookAdapter bestsellerAdapter;
+    private BookAdapter newArrivalsAdapter;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         setupCategoryList();
-        setupBestsellerList();
-        setupNewArrivalsList();
+        setupBookLists();
+        fetchBooksFromFirebase();
         return binding.getRoot();
     }
 
@@ -39,26 +44,38 @@ public class HomeFragment extends Fragment {
         binding.categoryList.setAdapter(new CategoryAdapter(categories));
     }
 
-    private void setupBestsellerList() {
-        List<Book> books = new ArrayList<>();
-        books.add(new Book("The Great Gatsby", "F. Scott Fitzgerald", R.drawable.sample_book_cover));
-        books.add(new Book("To Kill a Mockingbird", "Harper Lee", R.drawable.sample_book_cover));
-        books.add(new Book("1984", "George Orwell", R.drawable.sample_book_cover));
-        books.add(new Book("Harry Potter", "J.K. Rowling", R.drawable.sample_book_cover));
-        books.add(new Book("The Hobbit", "J.R.R. Tolkien", R.drawable.sample_book_cover));
+    private void setupBookLists() {
+        bestsellerAdapter = new BookAdapter(new ArrayList<>());
+        newArrivalsAdapter = new BookAdapter(new ArrayList<>());
         binding.bestsellerList.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
-        binding.bestsellerList.setAdapter(new BookAdapter(books));
+        binding.bestsellerList.setAdapter(bestsellerAdapter);
+        binding.newArrivalsList.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+        binding.newArrivalsList.setAdapter(newArrivalsAdapter);
     }
 
-    private void setupNewArrivalsList() {
-        List<Book> books = new ArrayList<>();
-        books.add(new Book("Project Hail Mary", "Andy Weir", R.drawable.sample_book_cover));
-        books.add(new Book("The Midnight Library", "Matt Haig", R.drawable.sample_book_cover));
-        books.add(new Book("Klara and the Sun", "Kazuo Ishiguro", R.drawable.sample_book_cover));
-        books.add(new Book("The Last Thing He Told Me", "Laura Dave", R.drawable.sample_book_cover));
-        books.add(new Book("Malibu Rising", "Taylor Jenkins Reid", R.drawable.sample_book_cover));
-        binding.newArrivalsList.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
-        binding.newArrivalsList.setAdapter(new BookAdapter(books));
+    private void fetchBooksFromFirebase() {
+        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("ebooks");
+        dbRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                allBooks.clear();
+                for (DataSnapshot snap : snapshot.getChildren()) {
+                    Book book = snap.getValue(Book.class);
+                    if (book != null) allBooks.add(book);
+                }
+                // For demo: bestsellers = first 5, new arrivals = last 5
+                List<Book> bestsellers = new ArrayList<>();
+                List<Book> newArrivals = new ArrayList<>();
+                for (int i = 0; i < allBooks.size(); i++) {
+                    if (i < 5) bestsellers.add(allBooks.get(i));
+                    if (i >= allBooks.size() - 5) newArrivals.add(allBooks.get(i));
+                }
+                bestsellerAdapter.updateBooks(bestsellers);
+                newArrivalsAdapter.updateBooks(newArrivals);
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
     }
 
     @Override
@@ -79,6 +96,7 @@ public class HomeFragment extends Fragment {
     static class Book {
         String title, author;
         int coverRes;
+        String coverImageUrl;
         Book(String title, String author, int coverRes) {
             this.title = title;
             this.author = author;
@@ -113,6 +131,10 @@ public class HomeFragment extends Fragment {
     class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder> {
         List<Book> books;
         BookAdapter(List<Book> books) { this.books = books; }
+        void updateBooks(List<Book> newBooks) {
+            this.books = newBooks;
+            notifyDataSetChanged();
+        }
         @NonNull
         @Override
         public BookViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -124,7 +146,10 @@ public class HomeFragment extends Fragment {
             Book book = books.get(position);
             holder.binding.bookTitle.setText(book.title);
             holder.binding.bookAuthor.setText(book.author);
-            holder.binding.bookCover.setImageResource(book.coverRes);
+            Glide.with(holder.binding.bookCover.getContext())
+                .load(book.coverImageUrl)
+                .placeholder(R.drawable.sample_book_cover)
+                .into(holder.binding.bookCover);
         }
         @Override
         public int getItemCount() { return books.size(); }

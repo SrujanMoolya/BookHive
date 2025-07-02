@@ -53,6 +53,12 @@ public class LoginFragment extends Fragment {
             Toast.makeText(getContext(), "Email and password required", Toast.LENGTH_SHORT).show();
             return;
         }
+        // Admin login check
+        if (email.equals("admin@gmail.com") && password.equals("admin@123")) {
+            NavController navController = NavHostFragment.findNavController(LoginFragment.this);
+            navController.navigate(R.id.action_LoginFragment_to_AdminDashboardFragment);
+            return;
+        }
         binding.loading.setVisibility(View.VISIBLE);
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(requireActivity(), task -> {

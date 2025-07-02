@@ -13,33 +13,39 @@ import com.example.bookhive.databinding.FragmentSearchBinding;
 import com.example.bookhive.databinding.ItemBookBinding;
 import java.util.ArrayList;
 import java.util.List;
+import com.google.firebase.database.*;
+import com.bumptech.glide.Glide;
 
 public class SearchFragment extends Fragment {
     private FragmentSearchBinding binding;
-    private List<Book> allBooks;
+    private List<Book> allBooks = new ArrayList<>();
     private BookAdapter adapter;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentSearchBinding.inflate(inflater, container, false);
-        setupBooks();
         setupRecyclerView();
+        fetchBooksFromFirebase();
         setupSearch();
         return binding.getRoot();
     }
 
-    private void setupBooks() {
-        allBooks = new ArrayList<>();
-        allBooks.add(new Book("The Great Gatsby", "F. Scott Fitzgerald", R.drawable.sample_book_cover));
-        allBooks.add(new Book("To Kill a Mockingbird", "Harper Lee", R.drawable.sample_book_cover));
-        allBooks.add(new Book("1984", "George Orwell", R.drawable.sample_book_cover));
-        allBooks.add(new Book("Harry Potter", "J.K. Rowling", R.drawable.sample_book_cover));
-        allBooks.add(new Book("The Hobbit", "J.R.R. Tolkien", R.drawable.sample_book_cover));
-        allBooks.add(new Book("Project Hail Mary", "Andy Weir", R.drawable.sample_book_cover));
-        allBooks.add(new Book("The Midnight Library", "Matt Haig", R.drawable.sample_book_cover));
-        allBooks.add(new Book("Klara and the Sun", "Kazuo Ishiguro", R.drawable.sample_book_cover));
-        allBooks.add(new Book("The Last Thing He Told Me", "Laura Dave", R.drawable.sample_book_cover));
-        allBooks.add(new Book("Malibu Rising", "Taylor Jenkins Reid", R.drawable.sample_book_cover));
+    private void fetchBooksFromFirebase() {
+        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("ebooks");
+        dbRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                allBooks.clear();
+                for (DataSnapshot snap : snapshot.getChildren()) {
+                    Book book = snap.getValue(Book.class);
+                    if (book != null) allBooks.add(book);
+                }
+                adapter.updateBooks(new ArrayList<>(allBooks));
+                binding.noResultsText.setVisibility(allBooks.isEmpty() ? View.VISIBLE : View.GONE);
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
     }
 
     private void setupRecyclerView() {
@@ -84,10 +90,12 @@ public class SearchFragment extends Fragment {
     static class Book {
         String title, author;
         int coverRes;
-        Book(String title, String author, int coverRes) {
+        String coverImageUrl;
+        Book(String title, String author, int coverRes, String coverImageUrl) {
             this.title = title;
             this.author = author;
             this.coverRes = coverRes;
+            this.coverImageUrl = coverImageUrl;
         }
     }
 
@@ -110,7 +118,10 @@ public class SearchFragment extends Fragment {
             Book book = books.get(position);
             holder.binding.bookTitle.setText(book.title);
             holder.binding.bookAuthor.setText(book.author);
-            holder.binding.bookCover.setImageResource(book.coverRes);
+            Glide.with(holder.binding.bookCover.getContext())
+                .load(book.coverImageUrl)
+                .placeholder(R.drawable.sample_book_cover)
+                .into(holder.binding.bookCover);
         }
         @Override
         public int getItemCount() { return books.size(); }

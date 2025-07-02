@@ -10,16 +10,19 @@
         android:name="com.example.bookhive.HomeFragment"
         android:label="Home"
         tools:layout="@layout/fragment_home" />
+
     <fragment
         android:id="@+id/SearchFragment"
         android:name="com.example.bookhive.SearchFragment"
         android:label="Search"
         tools:layout="@layout/fragment_search" />
+
     <fragment
         android:id="@+id/CatalogueFragment"
         android:name="com.example.bookhive.CatalogueFragment"
         android:label="Catalogue"
         tools:layout="@layout/fragment_catalogue" />
+
     <fragment
         android:id="@+id/ProfileFragment"
         android:name="com.example.bookhive.ProfileFragment"
@@ -29,29 +32,103 @@
             android:id="@+id/action_ProfileFragment_to_LoginFragment"
             app:destination="@id/LoginFragment" />
     </fragment>
+
     <fragment
         android:id="@+id/CartFragment"
         android:name="com.example.bookhive.CartFragment"
         android:label="Cart"
         tools:layout="@layout/fragment_cart" />
+
     <fragment
         android:id="@+id/PaymentPageFragment"
         android:name="com.example.bookhive.PaymentPageFragment"
         android:label="Payment Page"
         tools:layout="@layout/fragment_payment_page" />
+
     <fragment
         android:id="@+id/CheckoutFragment"
         android:name="com.example.bookhive.CheckoutFragment"
         android:label="Checkout"
         tools:layout="@layout/fragment_checkout" />
+
     <fragment
         android:id="@+id/BookReadViewFragment"
         android:name="com.example.bookhive.BookReadViewFragment"
         android:label="Book Read View"
         tools:layout="@layout/fragment_book_read_view" />
+
+    <fragment
+        android:id="@+id/BookSalesAnalyticsFragment"
+        android:name="com.example.bookhive.BookSalesAnalyticsFragment"
+        android:label="Book Sales Analytics"
+        tools:layout="@layout/fragment_book_sales_analytics" />
+
+    <fragment
+        android:id="@+id/FeedbacksFragment"
+        android:name="com.example.bookhive.FeedbacksFragment"
+        android:label="Feedbacks"
+        tools:layout="@layout/fragment_feedbacks" />
+
+    <fragment
+        android:id="@+id/ManageBooksFragment"
+        android:name="com.example.bookhive.ManageBooksFragment"
+        android:label="Manage Books"
+        tools:layout="@layout/fragment_manage_books" />
+
+    <fragment
+        android:id="@+id/AdminDashboardFragment"
+        android:name="com.example.bookhive.AdminDashboardFragment"
+        android:label="Admin Dashboard"
+        tools:layout="@layout/fragment_admin_dashboard">
+        <action
+            android:id="@+id/action_AdminDashboardFragment_to_UploadBookFragment"
+            app:destination="@id/UploadBookFragment" />
+        <action
+            android:id="@+id/action_AdminDashboardFragment_to_ViewOrdersFragment"
+            app:destination="@id/ViewOrdersFragment" />
+        <action
+            android:id="@+id/action_AdminDashboardFragment_to_ManageUsersFragment"
+            app:destination="@id/ManageUsersFragment" />
+        <action
+            android:id="@+id/action_AdminDashboardFragment_to_BookSalesAnalyticsFragment"
+            app:destination="@id/BookSalesAnalyticsFragment" />
+        <action
+            android:id="@+id/action_AdminDashboardFragment_to_FeedbacksFragment"
+            app:destination="@id/FeedbacksFragment" />
+        <action
+            android:id="@+id/action_AdminDashboardFragment_to_ManageBooksFragment"
+            app:destination="@id/ManageBooksFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/UploadBookFragment"
+        android:name="com.example.bookhive.UploadBookFragment"
+        android:label="Upload Book"
+        tools:layout="@layout/fragment_upload_book" />
+
+    <fragment
+        android:id="@+id/ViewOrdersFragment"
+        android:name="com.example.bookhive.ViewOrdersFragment"
+        android:label="View Orders"
+        tools:layout="@layout/fragment_view_orders" />
+
+    <fragment
+        android:id="@+id/ManageUsersFragment"
+        android:name="com.example.bookhive.ManageUsersFragment"
+        android:label="Manage Users"
+        tools:layout="@layout/fragment_manage_users" />
+
     <fragment
         android:id="@+id/LoginFragment"
         android:name="com.example.bookhive.LoginFragment"
         android:label="Login"
-        tools:layout="@layout/fragment_login" />
+        tools:layout="@layout/fragment_login">
+        <action
+            android:id="@+id/action_LoginFragment_to_ProfileFragment"
+            app:destination="@id/ProfileFragment" />
+        <action
+            android:id="@+id/action_LoginFragment_to_AdminDashboardFragment"
+            app:destination="@id/AdminDashboardFragment" />
+    </fragment>
+
 </navigation>
