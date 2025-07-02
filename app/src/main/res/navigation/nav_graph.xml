@@ -3,26 +3,55 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/FirstFragment">
+    app:startDestination="@id/HomeFragment">
 
     <fragment
-        android:id="@+id/FirstFragment"
-        android:name="com.example.bookhive.FirstFragment"
-        android:label="@string/first_fragment_label"
-        tools:layout="@layout/fragment_first">
-
+        android:id="@+id/HomeFragment"
+        android:name="com.example.bookhive.HomeFragment"
+        android:label="Home"
+        tools:layout="@layout/fragment_home" />
+    <fragment
+        android:id="@+id/SearchFragment"
+        android:name="com.example.bookhive.SearchFragment"
+        android:label="Search"
+        tools:layout="@layout/fragment_search" />
+    <fragment
+        android:id="@+id/CatalogueFragment"
+        android:name="com.example.bookhive.CatalogueFragment"
+        android:label="Catalogue"
+        tools:layout="@layout/fragment_catalogue" />
+    <fragment
+        android:id="@+id/ProfileFragment"
+        android:name="com.example.bookhive.ProfileFragment"
+        android:label="Profile"
+        tools:layout="@layout/fragment_profile">
         <action
-            android:id="@+id/action_FirstFragment_to_SecondFragment"
-            app:destination="@id/SecondFragment" />
+            android:id="@+id/action_ProfileFragment_to_LoginFragment"
+            app:destination="@id/LoginFragment" />
     </fragment>
     <fragment
-        android:id="@+id/SecondFragment"
-        android:name="com.example.bookhive.SecondFragment"
-        android:label="@string/second_fragment_label"
-        tools:layout="@layout/fragment_second">
-
-        <action
-            android:id="@+id/action_SecondFragment_to_FirstFragment"
-            app:destination="@id/FirstFragment" />
-    </fragment>
+        android:id="@+id/CartFragment"
+        android:name="com.example.bookhive.CartFragment"
+        android:label="Cart"
+        tools:layout="@layout/fragment_cart" />
+    <fragment
+        android:id="@+id/PaymentPageFragment"
+        android:name="com.example.bookhive.PaymentPageFragment"
+        android:label="Payment Page"
+        tools:layout="@layout/fragment_payment_page" />
+    <fragment
+        android:id="@+id/CheckoutFragment"
+        android:name="com.example.bookhive.CheckoutFragment"
+        android:label="Checkout"
+        tools:layout="@layout/fragment_checkout" />
+    <fragment
+        android:id="@+id/BookReadViewFragment"
+        android:name="com.example.bookhive.BookReadViewFragment"
+        android:label="Book Read View"
+        tools:layout="@layout/fragment_book_read_view" />
+    <fragment
+        android:id="@+id/LoginFragment"
+        android:name="com.example.bookhive.LoginFragment"
+        android:label="Login"
+        tools:layout="@layout/fragment_login" />
 </navigation>
