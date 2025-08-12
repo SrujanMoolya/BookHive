@@ -5,15 +5,15 @@ plugins {
 }
 
 android {
-    namespace = "com.example.bookhive"
+    namespace = "com.svvaap.bookhive"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.bookhive"
+        applicationId = "com.svvaap.bookhive"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

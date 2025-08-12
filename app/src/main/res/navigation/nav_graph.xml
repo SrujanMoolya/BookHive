@@ -7,25 +7,25 @@
 
     <fragment
         android:id="@+id/HomeFragment"
-        android:name="com.example.bookhive.HomeFragment"
+        android:name="com.svvaap.bookhive.HomeFragment"
         android:label="Home"
         tools:layout="@layout/fragment_home" />
 
     <fragment
         android:id="@+id/SearchFragment"
-        android:name="com.example.bookhive.SearchFragment"
+        android:name="com.svvaap.bookhive.SearchFragment"
         android:label="Search"
         tools:layout="@layout/fragment_search" />
 
     <fragment
         android:id="@+id/CatalogueFragment"
-        android:name="com.example.bookhive.CatalogueFragment"
+        android:name="com.svvaap.bookhive.CatalogueFragment"
         android:label="Catalogue"
         tools:layout="@layout/fragment_catalogue" />
 
     <fragment
         android:id="@+id/ProfileFragment"
-        android:name="com.example.bookhive.ProfileFragment"
+        android:name="com.svvaap.bookhive.ProfileFragment"
         android:label="Profile"
         tools:layout="@layout/fragment_profile">
         <action
@@ -35,49 +35,49 @@
 
     <fragment
         android:id="@+id/CartFragment"
-        android:name="com.example.bookhive.CartFragment"
+        android:name="com.svvaap.bookhive.CartFragment"
         android:label="Cart"
         tools:layout="@layout/fragment_cart" />
 
     <fragment
         android:id="@+id/PaymentPageFragment"
-        android:name="com.example.bookhive.PaymentPageFragment"
+        android:name="com.svvaap.bookhive.PaymentPageFragment"
         android:label="Payment Page"
         tools:layout="@layout/fragment_payment_page" />
 
     <fragment
         android:id="@+id/CheckoutFragment"
-        android:name="com.example.bookhive.CheckoutFragment"
+        android:name="com.svvaap.bookhive.CheckoutFragment"
         android:label="Checkout"
         tools:layout="@layout/fragment_checkout" />
 
     <fragment
         android:id="@+id/BookReadViewFragment"
-        android:name="com.example.bookhive.BookReadViewFragment"
+        android:name="com.svvaap.bookhive.BookReadViewFragment"
         android:label="Book Read View"
         tools:layout="@layout/fragment_book_read_view" />
 
     <fragment
         android:id="@+id/BookSalesAnalyticsFragment"
-        android:name="com.example.bookhive.BookSalesAnalyticsFragment"
+        android:name="com.svvaap.bookhive.BookSalesAnalyticsFragment"
         android:label="Book Sales Analytics"
         tools:layout="@layout/fragment_book_sales_analytics" />
 
     <fragment
         android:id="@+id/FeedbacksFragment"
-        android:name="com.example.bookhive.FeedbacksFragment"
+        android:name="com.svvaap.bookhive.FeedbacksFragment"
         android:label="Feedbacks"
         tools:layout="@layout/fragment_feedbacks" />
 
     <fragment
         android:id="@+id/ManageBooksFragment"
-        android:name="com.example.bookhive.ManageBooksFragment"
+        android:name="com.svvaap.bookhive.ManageBooksFragment"
         android:label="Manage Books"
         tools:layout="@layout/fragment_manage_books" />
 
     <fragment
         android:id="@+id/AdminDashboardFragment"
-        android:name="com.example.bookhive.AdminDashboardFragment"
+        android:name="com.svvaap.bookhive.AdminDashboardFragment"
         android:label="Admin Dashboard"
         tools:layout="@layout/fragment_admin_dashboard">
         <action
@@ -102,25 +102,25 @@
 
     <fragment
         android:id="@+id/UploadBookFragment"
-        android:name="com.example.bookhive.UploadBookFragment"
+        android:name="com.svvaap.bookhive.UploadBookFragment"
         android:label="Upload Book"
         tools:layout="@layout/fragment_upload_book" />
 
     <fragment
         android:id="@+id/ViewOrdersFragment"
-        android:name="com.example.bookhive.ViewOrdersFragment"
+        android:name="com.svvaap.bookhive.ViewOrdersFragment"
         android:label="View Orders"
         tools:layout="@layout/fragment_view_orders" />
 
     <fragment
         android:id="@+id/ManageUsersFragment"
-        android:name="com.example.bookhive.ManageUsersFragment"
+        android:name="com.svvaap.bookhive.ManageUsersFragment"
         android:label="Manage Users"
         tools:layout="@layout/fragment_manage_users" />
 
     <fragment
         android:id="@+id/LoginFragment"
-        android:name="com.example.bookhive.LoginFragment"
+        android:name="com.svvaap.bookhive.LoginFragment"
         android:label="Login"
         tools:layout="@layout/fragment_login">
         <action
