@@ -126,32 +126,50 @@
             android:layout_height="wrap_content"
             android:text="Cover Image"
             android:textStyle="bold" />
-        <com.google.android.material.textfield.TextInputLayout
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:layout_marginBottom="12dp">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/input_cover_url"
-                android:layout_width="match_parent"
+            <Button
+                android:id="@+id/button_select_cover"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:hint="Cover Image URL" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:text="Select Cover" />
+            <TextView
+                android:id="@+id/text_cover_status"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingStart="12dp"
+                android:text="No file selected" />
+        </LinearLayout>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Ebook File (PDF)"
             android:textStyle="bold" />
-        <com.google.android.material.textfield.TextInputLayout
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:layout_marginBottom="12dp">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/input_file_url"
-                android:layout_width="match_parent"
+            <Button
+                android:id="@+id/button_select_pdf"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:hint="Ebook File URL (PDF)" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:text="Select PDF" />
+            <TextView
+                android:id="@+id/text_pdf_status"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingStart="12dp"
+                android:text="No file selected" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/button_upload_book"

@@ -33,15 +33,45 @@ public class HomeFragment extends Fragment {
 
     private void setupCategoryList() {
         List<Category> categories = new ArrayList<>();
-        categories.add(new Category("Fiction", R.drawable.sample_category));
-        categories.add(new Category("Non-Fiction", R.drawable.sample_category));
-        categories.add(new Category("Comics", R.drawable.sample_category));
-        categories.add(new Category("Biographies", R.drawable.sample_category));
-        categories.add(new Category("Children", R.drawable.sample_category));
-        categories.add(new Category("Science", R.drawable.sample_category));
-        categories.add(new Category("Romance", R.drawable.sample_category));
+        categories.add(new Category("Self-help", getCategoryIconRes("Self-help")));
+        categories.add(new Category("Fiction", getCategoryIconRes("Fiction")));
+        categories.add(new Category("Non-fiction", getCategoryIconRes("Non-fiction")));
+        categories.add(new Category("Science", getCategoryIconRes("Science")));
+        categories.add(new Category("Biography", getCategoryIconRes("Biography")));
+        categories.add(new Category("Other", getCategoryIconRes("Other")));
         binding.categoryList.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
         binding.categoryList.setAdapter(new CategoryAdapter(categories));
+    }
+
+    private int getCategoryIconRes(String name) {
+        if (name == null) return R.drawable.ic_category_generic;
+        String key = name.trim().toLowerCase();
+        switch (key) {
+            case "self-help":
+            case "selfhelp":
+                return R.drawable.ic_category_self_help;
+            case "fiction":
+                return R.drawable.ic_category_fiction;
+            case "non-fiction":
+            case "nonfiction":
+                return R.drawable.ic_category_nonfiction;
+            case "comics":
+                return R.drawable.ic_category_comics;
+            case "biographies":
+            case "biography":
+                return R.drawable.ic_category_biographies;
+            case "children":
+            case "kids":
+                return R.drawable.ic_category_children;
+            case "science":
+                return R.drawable.ic_category_science;
+            case "romance":
+                return R.drawable.ic_category_romance;
+            case "other":
+                return R.drawable.ic_category_other;
+            default:
+                return R.drawable.ic_category_generic;
+        }
     }
 
     private void setupBookLists() {
@@ -60,7 +90,7 @@ public class HomeFragment extends Fragment {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 allBooks.clear();
                 for (DataSnapshot snap : snapshot.getChildren()) {
-                    Book book = snap.getValue(Book.class);
+                    Book book = safeMapToBook(snap);
                     if (book != null) {
                         book.id = snap.getKey();
                         allBooks.add(book);
@@ -81,16 +111,41 @@ public class HomeFragment extends Fragment {
         });
     }
 
+    private Book safeMapToBook(DataSnapshot snap) {
+        Object raw = snap.getValue();
+        if (!(raw instanceof java.util.Map)) return snap.getValue(Book.class);
+        java.util.Map map = (java.util.Map) raw;
+        Book b = new Book();
+        b.title = asString(map.get("title"));
+        b.author = asString(map.get("author"));
+        b.category = asString(map.get("category"));
+        b.language = asString(map.get("language"));
+        b.description = asString(map.get("description"));
+        b.coverImageUrl = asString(map.get("coverImageUrl"));
+        b.fileUrl = asString(map.get("fileUrl"));
+        b.visibility = asString(map.get("visibility"));
+        b.uploadDate = asString(map.get("uploadDate"));
+        b.price = asDouble(map.get("price"));
+        return b;
+    }
+
+    private String asString(Object v) {
+        return v == null ? null : String.valueOf(v);
+    }
+
+    private double asDouble(Object v) {
+        if (v instanceof Number) return ((Number) v).doubleValue();
+        if (v instanceof String) {
+            try { return Double.parseDouble((String) v); } catch (Exception ignored) {}
+        }
+        return 0d;
+    }
+
     private void openBookDetail(Book book) {
         Bundle bundle = new Bundle();
         bundle.putString("bookId", book.id);
-        BookDetailFragment fragment = new BookDetailFragment();
-        fragment.setArguments(bundle);
-        requireActivity().getSupportFragmentManager()
-            .beginTransaction()
-            .replace(R.id.fragment_container, fragment)
-            .addToBackStack(null)
-            .commit();
+        androidx.navigation.fragment.NavHostFragment.findNavController(this)
+            .navigate(R.id.BookDetailFragment, bundle);
     }
 
     @Override
@@ -124,6 +179,7 @@ public class HomeFragment extends Fragment {
             Category c = categories.get(position);
             holder.binding.categoryLabel.setText(c.name);
             holder.binding.categoryIcon.setImageResource(c.iconRes);
+            holder.itemView.setOnClickListener(v -> openCategory(c.name));
         }
         @Override
         public int getItemCount() { return categories.size(); }
@@ -131,6 +187,13 @@ public class HomeFragment extends Fragment {
             ItemCategoryBinding binding;
             CategoryViewHolder(ItemCategoryBinding b) { super(b.getRoot()); binding = b; }
         }
+    }
+
+    private void openCategory(String category) {
+        Bundle bundle = new Bundle();
+        bundle.putString("categoryFilter", category);
+        androidx.navigation.fragment.NavHostFragment.findNavController(this)
+                .navigate(R.id.CatalogueFragment, bundle);
     }
 
     interface OnBookClickListener {

@@ -52,6 +52,12 @@
         tools:layout="@layout/fragment_checkout" />
 
     <fragment
+        android:id="@+id/BookDetailFragment"
+        android:name="com.svvaap.bookhive.BookDetailFragment"
+        android:label="Book Details"
+        tools:layout="@layout/fragment_book_detail" />
+
+    <fragment
         android:id="@+id/BookReadViewFragment"
         android:name="com.svvaap.bookhive.BookReadViewFragment"
         android:label="Book Read View"

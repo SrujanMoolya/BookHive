@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@color/categoryBiographies"
+        android:pathData="M12,12a5,5 0 1,0 0,-10 5,5 0 0,0 0,10zM3,22v-1c0,-3.3 5.8,-5 9,-5s9,1.7 9,5v1z"/>
+</vector>
+

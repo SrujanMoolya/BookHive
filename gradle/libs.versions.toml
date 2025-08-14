@@ -15,6 +15,8 @@ googleGmsGoogleServices = "4.4.3"
 firebaseDatabase = "21.0.0"
 firebase-auth = "21.0.1" # or latest version
 google-signin = "20.7.0"
+activity = "1.9.1"
+fragment = "1.6.2"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -31,6 +33,8 @@ lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-view
 firebase-database = { group = "com.google.firebase", name = "firebase-database", version.ref = "firebaseDatabase" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebase-auth" }
 google-signin = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "google-signin" }
+activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
+fragment = { group = "androidx.fragment", name = "fragment", version.ref = "fragment" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

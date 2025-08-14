@@ -34,18 +34,108 @@ public class CatalogueFragment extends Fragment {
         setupRecyclerView();
         fetchBooksFromFirebase();
         setupSearch();
+        applyIncomingCategoryFilterIfAny();
         return binding.getRoot();
     }
 
+    private void applyIncomingCategoryFilterIfAny() {
+        Bundle args = getArguments();
+        if (args == null) return;
+        String category = args.getString("categoryFilter", null);
+        if (category == null || category.isEmpty()) return;
+        binding.catalogueSearchInput.setText("");
+        filterByCategory(category);
+    }
+
     private void fetchBooksFromFirebase() {
+        // If "My Books" (purchased) view, filter by purchases/{uid}
+        String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
+        if (uid != null) {
+            DatabaseReference purchasesRef = FirebaseDatabase.getInstance().getReference("purchases").child(uid);
+            purchasesRef.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    java.util.Set<String> purchasedIds = new java.util.HashSet<>();
+                    for (DataSnapshot s : snapshot.getChildren()) {
+                        purchasedIds.add(s.getKey());
+                    }
+                    loadBooksByIds(purchasedIds);
+                }
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {}
+            });
+            return;
+        }
         DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("ebooks");
         dbRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 allBooks.clear();
                 for (DataSnapshot snap : snapshot.getChildren()) {
-                    Book book = snap.getValue(Book.class);
-                    if (book != null) allBooks.add(book);
+                    Book book = safeMapToBook(snap);
+                    if (book != null) { book.id = snap.getKey(); allBooks.add(book); }
+                }
+                // If opened via category filter keep it applied, else show all
+                Bundle args = getArguments();
+                if (args != null) {
+                    String category = args.getString("categoryFilter", null);
+                    if (category != null && !category.isEmpty()) {
+                        filterByCategory(category);
+                    } else {
+                        adapter.updateBooks(new ArrayList<>(allBooks));
+                    }
+                } else {
+                    adapter.updateBooks(new ArrayList<>(allBooks));
+                }
+                binding.noBooksText.setVisibility(allBooks.isEmpty() ? View.VISIBLE : View.GONE);
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
+    }
+
+    private Book safeMapToBook(DataSnapshot snap) {
+        Object raw = snap.getValue();
+        if (!(raw instanceof java.util.Map)) return snap.getValue(Book.class);
+        java.util.Map map = (java.util.Map) raw;
+        Book b = new Book();
+        b.title = asString(map.get("title"));
+        b.author = asString(map.get("author"));
+        b.category = asString(map.get("category"));
+        b.language = asString(map.get("language"));
+        b.description = asString(map.get("description"));
+        b.coverImageUrl = asString(map.get("coverImageUrl"));
+        b.fileUrl = asString(map.get("fileUrl"));
+        b.visibility = asString(map.get("visibility"));
+        b.uploadDate = asString(map.get("uploadDate"));
+        b.price = asDouble(map.get("price"));
+        return b;
+    }
+
+    private String asString(Object v) {
+        return v == null ? null : String.valueOf(v);
+    }
+
+    private double asDouble(Object v) {
+        if (v instanceof Number) return ((Number) v).doubleValue();
+        if (v instanceof String) {
+            try { return Double.parseDouble((String) v); } catch (Exception ignored) {}
+        }
+        return 0d;
+    }
+
+    private void loadBooksByIds(java.util.Set<String> ids) {
+        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("ebooks");
+        dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                allBooks.clear();
+                for (DataSnapshot snap : snapshot.getChildren()) {
+                    String id = snap.getKey();
+                    if (id != null && ids.contains(id)) {
+                        Book book = snap.getValue(Book.class);
+                        if (book != null) { book.id = id; allBooks.add(book); }
+                    }
                 }
                 adapter.updateBooks(new ArrayList<>(allBooks));
                 binding.noBooksText.setVisibility(allBooks.isEmpty() ? View.VISIBLE : View.GONE);
@@ -58,7 +148,7 @@ public class CatalogueFragment extends Fragment {
     private void setupRecyclerView() {
         adapter = new BookAdapter(new ArrayList<>(allBooks));
         binding.catalogueGrid.setLayoutManager(new GridLayoutManager(getContext(), 2));
-        binding.catalogueGrid.setAdapter(adapter);
+         binding.catalogueGrid.setAdapter(adapter);
         binding.noBooksText.setVisibility(View.GONE);
     }
 
@@ -80,6 +170,17 @@ public class CatalogueFragment extends Fragment {
         for (Book book : allBooks) {
             if (book.title.toLowerCase().contains(query.toLowerCase()) ||
                 book.author.toLowerCase().contains(query.toLowerCase())) {
+                filtered.add(book);
+            }
+        }
+        adapter.updateBooks(filtered);
+        binding.noBooksText.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
+    private void filterByCategory(String category) {
+        List<Book> filtered = new ArrayList<>();
+        for (Book book : allBooks) {
+            if (book.category != null && book.category.equalsIgnoreCase(category)) {
                 filtered.add(book);
             }
         }

@@ -10,8 +10,8 @@
         android:title="Search" />
     <item
         android:id="@+id/CatalogueFragment"
-        android:icon="@drawable/sample_category"
-        android:title="Catalogue" />
+        android:icon="@drawable/ic_read"
+        android:title="My Books" />
     <item
         android:id="@+id/ProfileFragment"
         android:icon="@drawable/ic_profile"

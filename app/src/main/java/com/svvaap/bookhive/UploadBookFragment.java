@@ -1,12 +1,16 @@
 package com.svvaap.bookhive;
 
 import android.app.DatePickerDialog;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -25,7 +29,30 @@ public class UploadBookFragment extends Fragment {
     private Spinner spinnerCategory, spinnerLanguage, spinnerVisibility;
     private TextView textUploadDate;
     private Button buttonUploadBook, buttonPickDate;
+    private Button buttonSelectCover, buttonSelectPdf;
+    private TextView textCoverStatus, textPdfStatus;
     private String uploadDateISO;
+
+    private Uri selectedCoverUri;
+    private Uri selectedPdfUri;
+
+    private final ActivityResultLauncher<String> pickImageLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(), uri -> {
+                if (uri != null) {
+                    selectedCoverUri = uri;
+                    textCoverStatus.setText("Selected: " + uri.getLastPathSegment());
+                }
+            }
+    );
+
+    private final ActivityResultLauncher<String> pickPdfLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(), uri -> {
+                if (uri != null) {
+                    selectedPdfUri = uri;
+                    textPdfStatus.setText("Selected: " + uri.getLastPathSegment());
+                }
+            }
+    );
 
     @Nullable
     @Override
@@ -35,12 +62,17 @@ public class UploadBookFragment extends Fragment {
         inputAuthor = view.findViewById(R.id.input_author);
         inputDescription = view.findViewById(R.id.input_description);
         inputPrice = view.findViewById(R.id.input_price);
-        inputCoverUrl = view.findViewById(R.id.input_cover_url);
-        inputFileUrl = view.findViewById(R.id.input_file_url);
+        // URL fields kept for backwards-compat if needed but hidden usage
+        inputCoverUrl = null;
+        inputFileUrl = null;
         spinnerCategory = view.findViewById(R.id.spinner_category);
         spinnerLanguage = view.findViewById(R.id.spinner_language);
         spinnerVisibility = view.findViewById(R.id.spinner_visibility);
         textUploadDate = view.findViewById(R.id.text_upload_date);
+        buttonSelectCover = view.findViewById(R.id.button_select_cover);
+        buttonSelectPdf = view.findViewById(R.id.button_select_pdf);
+        textCoverStatus = view.findViewById(R.id.text_cover_status);
+        textPdfStatus = view.findViewById(R.id.text_pdf_status);
         buttonUploadBook = view.findViewById(R.id.button_upload_book);
         buttonPickDate = view.findViewById(R.id.button_pick_date);
 
@@ -58,6 +90,8 @@ public class UploadBookFragment extends Fragment {
         spinnerVisibility.setAdapter(visibilityAdapter);
 
         buttonPickDate.setOnClickListener(v -> pickDate());
+        buttonSelectCover.setOnClickListener(v -> pickImageLauncher.launch("image/*"));
+        buttonSelectPdf.setOnClickListener(v -> pickPdfLauncher.launch("application/pdf"));
         buttonUploadBook.setOnClickListener(v -> uploadBook());
 
         return view;
@@ -81,39 +115,61 @@ public class UploadBookFragment extends Fragment {
         String language = spinnerLanguage.getSelectedItem().toString();
         String description = inputDescription.getText().toString().trim();
         String priceStr = inputPrice.getText().toString().trim();
-        String coverImageUrl = inputCoverUrl.getText().toString().trim();
-        String fileUrl = inputFileUrl.getText().toString().trim();
         String visibility = spinnerVisibility.getSelectedItem().toString();
         String uploadDate = uploadDateISO != null ? uploadDateISO : new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.getDefault()).format(new java.util.Date());
 
-        if (TextUtils.isEmpty(title) || TextUtils.isEmpty(author) || TextUtils.isEmpty(coverImageUrl) || TextUtils.isEmpty(fileUrl)) {
-            Toast.makeText(getContext(), "Please fill all required fields and provide URLs", Toast.LENGTH_SHORT).show();
+        if (TextUtils.isEmpty(title) || TextUtils.isEmpty(author) || selectedCoverUri == null || selectedPdfUri == null) {
+            Toast.makeText(requireContext(), "Please fill fields and select files", Toast.LENGTH_SHORT).show();
             return;
         }
         double price = 0;
         try { price = Double.parseDouble(priceStr); } catch (Exception ignored) {}
 
-        // Save to database
-        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("ebooks");
-        String bookId = "book" + System.currentTimeMillis();
-        java.util.Map<String, Object> bookData = new java.util.HashMap<>();
-        bookData.put("title", title);
-        bookData.put("author", author);
-        bookData.put("category", category);
-        bookData.put("language", language);
-        bookData.put("description", description);
-        bookData.put("price", price);
-        bookData.put("coverImageUrl", coverImageUrl);
-        bookData.put("fileUrl", fileUrl);
-        bookData.put("visibility", visibility);
-        bookData.put("uploadDate", uploadDate);
-        dbRef.child(bookId).setValue(bookData).addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                Toast.makeText(getContext(), "Book uploaded successfully!", Toast.LENGTH_LONG).show();
-                clearForm();
-            } else {
-                Toast.makeText(getContext(), "Failed to upload book", Toast.LENGTH_LONG).show();
+        buttonUploadBook.setEnabled(false);
+        textCoverStatus.setText("Uploading...");
+        textPdfStatus.setText("Uploading...");
+
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        executor.execute(() -> {
+            String coverUrl;
+            String pdfUrl;
+            try {
+                coverUrl = uploadToCloudinary(selectedCoverUri, true);
+                pdfUrl = uploadToCloudinary(selectedPdfUri, false);
+            } catch (Exception e) {
+                mainHandler.post(() -> {
+                    buttonUploadBook.setEnabled(true);
+                    Toast.makeText(requireContext(), "Upload failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    textCoverStatus.setText("Upload failed");
+                    textPdfStatus.setText("Upload failed");
+                });
+                return;
             }
+
+            java.util.Map<String, Object> bookData = new java.util.HashMap<>();
+            bookData.put("title", title);
+            bookData.put("author", author);
+            bookData.put("category", category);
+            bookData.put("language", language);
+            bookData.put("description", description);
+            bookData.put("price", priceStr);
+            bookData.put("coverImageUrl", coverUrl);
+            bookData.put("fileUrl", pdfUrl);
+            bookData.put("visibility", visibility);
+            bookData.put("uploadDate", uploadDate);
+
+            com.google.firebase.database.DatabaseReference dbRef = com.google.firebase.database.FirebaseDatabase.getInstance().getReference("ebooks");
+            String bookId = "book" + System.currentTimeMillis();
+            dbRef.child(bookId).setValue(bookData).addOnCompleteListener(task -> {
+                buttonUploadBook.setEnabled(true);
+                if (task.isSuccessful()) {
+                    Toast.makeText(requireContext(), "Book uploaded successfully!", Toast.LENGTH_LONG).show();
+                    clearForm();
+                } else {
+                    Toast.makeText(requireContext(), "Failed to upload book", Toast.LENGTH_LONG).show();
+                }
+            });
         });
     }
 
@@ -122,12 +178,62 @@ public class UploadBookFragment extends Fragment {
         inputAuthor.setText("");
         inputDescription.setText("");
         inputPrice.setText("");
-        inputCoverUrl.setText("");
-        inputFileUrl.setText("");
+        selectedCoverUri = null;
+        selectedPdfUri = null;
+        textCoverStatus.setText("No file selected");
+        textPdfStatus.setText("No file selected");
         spinnerCategory.setSelection(0);
         spinnerLanguage.setSelection(0);
         spinnerVisibility.setSelection(0);
         textUploadDate.setText("Select date...");
         uploadDateISO = null;
+    }
+
+    private String uploadToCloudinary(Uri uri, boolean isImage) throws Exception {
+        if (uri == null) throw new IllegalArgumentException("No file selected");
+        String cloudName = BuildConfig.CLOUDINARY_CLOUD_NAME;
+        String unsignedPreset = BuildConfig.CLOUDINARY_UNSIGNED_PRESET;
+        if (TextUtils.isEmpty(cloudName) || TextUtils.isEmpty(unsignedPreset)) {
+            throw new IllegalStateException("Cloudinary not configured");
+        }
+
+        String uploadUrl = "https://api.cloudinary.com/v1_1/" + cloudName + "/" + (isImage ? "image" : "raw") + "/upload";
+
+        android.content.ContentResolver resolver = requireContext().getContentResolver();
+        java.io.InputStream inputStream = resolver.openInputStream(uri);
+        if (inputStream == null) throw new IllegalStateException("Cannot open file");
+
+        okhttp3.MediaType mediaType = okhttp3.MediaType.parse(isImage ? "image/*" : "application/pdf");
+        okhttp3.RequestBody fileBody = okhttp3.RequestBody.create(readAllBytes(inputStream), mediaType);
+
+        okhttp3.MultipartBody requestBody = new okhttp3.MultipartBody.Builder()
+                .setType(okhttp3.MultipartBody.FORM)
+                .addFormDataPart("upload_preset", unsignedPreset)
+                .addFormDataPart("file", "upload" + (isImage ? ".jpg" : ".pdf"), fileBody)
+                .build();
+
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(uploadUrl)
+                .post(requestBody)
+                .build();
+
+        okhttp3.OkHttpClient client = new okhttp3.OkHttpClient();
+        try (okhttp3.Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) throw new IllegalStateException("Upload failed: " + response.code());
+            String body = response.body() != null ? response.body().string() : null;
+            if (body == null) throw new IllegalStateException("Empty response");
+            org.json.JSONObject json = new org.json.JSONObject(body);
+            return json.optString("secure_url", json.optString("url"));
+        }
+    }
+
+    private byte[] readAllBytes(java.io.InputStream is) throws java.io.IOException {
+        java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+        byte[] data = new byte[8192];
+        int nRead;
+        while ((nRead = is.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+        return buffer.toByteArray();
     }
 } 

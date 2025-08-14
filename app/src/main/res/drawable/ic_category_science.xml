@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@color/categoryScience"
+        android:pathData="M7,2h10v2h-4v8l4,6v4H7v-4l4,-6V4H7z"/>
+</vector>
+

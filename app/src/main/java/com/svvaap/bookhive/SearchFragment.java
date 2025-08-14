@@ -15,10 +15,11 @@ import java.util.ArrayList;
 import java.util.List;
 import com.google.firebase.database.*;
 import com.bumptech.glide.Glide;
+import androidx.navigation.Navigation;
 
 public class SearchFragment extends Fragment {
     private FragmentSearchBinding binding;
-    private List<Book> allBooks = new ArrayList<>();
+    private List<com.svvaap.bookhive.Book> allBooks = new ArrayList<>();
     private BookAdapter adapter;
 
     @Override
@@ -37,8 +38,8 @@ public class SearchFragment extends Fragment {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 allBooks.clear();
                 for (DataSnapshot snap : snapshot.getChildren()) {
-                    Book book = snap.getValue(Book.class);
-                    if (book != null) allBooks.add(book);
+                    Book book = safeMapToBook(snap);
+                    if (book != null) { book.id = snap.getKey(); allBooks.add(book); }
                 }
                 adapter.updateBooks(new ArrayList<>(allBooks));
                 binding.noResultsText.setVisibility(allBooks.isEmpty() ? View.VISIBLE : View.GONE);
@@ -46,6 +47,36 @@ public class SearchFragment extends Fragment {
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         });
+    }
+
+    private Book safeMapToBook(DataSnapshot snap) {
+        Object raw = snap.getValue();
+        if (!(raw instanceof java.util.Map)) return snap.getValue(Book.class);
+        java.util.Map map = (java.util.Map) raw;
+        Book b = new Book();
+        b.title = asString(map.get("title"));
+        b.author = asString(map.get("author"));
+        b.category = asString(map.get("category"));
+        b.language = asString(map.get("language"));
+        b.description = asString(map.get("description"));
+        b.coverImageUrl = asString(map.get("coverImageUrl"));
+        b.fileUrl = asString(map.get("fileUrl"));
+        b.visibility = asString(map.get("visibility"));
+        b.uploadDate = asString(map.get("uploadDate"));
+        b.price = asDouble(map.get("price"));
+        return b;
+    }
+
+    private String asString(Object v) {
+        return v == null ? null : String.valueOf(v);
+    }
+
+    private double asDouble(Object v) {
+        if (v instanceof Number) return ((Number) v).doubleValue();
+        if (v instanceof String) {
+            try { return Double.parseDouble((String) v); } catch (Exception ignored) {}
+        }
+        return 0d;
     }
 
     private void setupRecyclerView() {
@@ -69,8 +100,8 @@ public class SearchFragment extends Fragment {
     }
 
     private void filterBooks(String query) {
-        List<Book> filtered = new ArrayList<>();
-        for (Book book : allBooks) {
+        List<com.svvaap.bookhive.Book> filtered = new ArrayList<>();
+        for (com.svvaap.bookhive.Book book : allBooks) {
             if (book.title.toLowerCase().contains(query.toLowerCase()) ||
                 book.author.toLowerCase().contains(query.toLowerCase())) {
                 filtered.add(book);
@@ -86,24 +117,11 @@ public class SearchFragment extends Fragment {
         binding = null;
     }
 
-    // --- Data Model ---
-    static class Book {
-        String title, author;
-        int coverRes;
-        String coverImageUrl;
-        Book(String title, String author, int coverRes, String coverImageUrl) {
-            this.title = title;
-            this.author = author;
-            this.coverRes = coverRes;
-            this.coverImageUrl = coverImageUrl;
-        }
-    }
-
     // --- Adapter ---
     class BookAdapter extends androidx.recyclerview.widget.RecyclerView.Adapter<BookAdapter.BookViewHolder> {
-        List<Book> books;
-        BookAdapter(List<Book> books) { this.books = books; }
-        void updateBooks(List<Book> newBooks) {
+        List<com.svvaap.bookhive.Book> books;
+        BookAdapter(List<com.svvaap.bookhive.Book> books) { this.books = books; }
+        void updateBooks(List<com.svvaap.bookhive.Book> newBooks) {
             this.books = newBooks;
             notifyDataSetChanged();
         }
@@ -115,13 +133,20 @@ public class SearchFragment extends Fragment {
         }
         @Override
         public void onBindViewHolder(@NonNull BookViewHolder holder, int position) {
-            Book book = books.get(position);
+            com.svvaap.bookhive.Book book = books.get(position);
             holder.binding.bookTitle.setText(book.title);
             holder.binding.bookAuthor.setText(book.author);
             Glide.with(holder.binding.bookCover.getContext())
                 .load(book.coverImageUrl)
                 .placeholder(R.drawable.sample_book_cover)
                 .into(holder.binding.bookCover);
+            holder.itemView.setOnClickListener(v -> {
+                if (book.id != null) {
+                    Bundle bundle = new Bundle();
+                    bundle.putString("bookId", book.id);
+                    Navigation.findNavController(v).navigate(R.id.BookDetailFragment, bundle);
+                }
+            });
         }
         @Override
         public int getItemCount() { return books.size(); }

@@ -15,6 +15,18 @@ android {
         versionCode = 2
         versionName = "1.2"
 
+        // Cloudinary config injected from gradle.properties (leave empty to disable until configured)
+        buildConfigField(
+                "String",
+                "CLOUDINARY_CLOUD_NAME",
+                "\"${project.findProperty("CLOUDINARY_CLOUD_NAME") ?: ""}\""
+        )
+        buildConfigField(
+                "String",
+                "CLOUDINARY_UNSIGNED_PRESET",
+                "\"${project.findProperty("CLOUDINARY_UNSIGNED_PRESET") ?: ""}\""
+        )
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -35,6 +47,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 
@@ -52,6 +65,16 @@ dependencies {
     implementation(libs.google.signin)
 
     implementation("com.github.bumptech.glide:glide:4.16.0")
+
+    // Razorpay Checkout SDK
+    implementation("com.razorpay:checkout:1.6.33")
+
+    // HTTP client for Cloudinary uploads
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Ensure Activity Result APIs available
+    implementation("androidx.activity:activity:1.9.1")
+    implementation("androidx.fragment:fragment:1.6.2")
 
 
     testImplementation(libs.junit)
