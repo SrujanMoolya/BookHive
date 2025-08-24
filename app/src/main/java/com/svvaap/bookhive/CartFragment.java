@@ -20,6 +20,7 @@ public class CartFragment extends Fragment {
     private BookAdapter adapter;
     private List<Book> cartBooks;
     private DatabaseReference cartRef;
+    private ValueEventListener cartListener;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -39,9 +40,14 @@ public class CartFragment extends Fragment {
             return;
         }
         cartRef = FirebaseDatabase.getInstance().getReference("carts").child(uid);
-        cartRef.addValueEventListener(new ValueEventListener() {
+        cartListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                // Check if binding is still valid (fragment view exists)
+                if (binding == null) {
+                    return;
+                }
+                
                 cartBooks.clear();
                 double total = 0.0;
                 for (DataSnapshot snap : snapshot.getChildren()) {
@@ -56,12 +62,17 @@ public class CartFragment extends Fragment {
                     cartBooks.add(new Book(id, title, author, price, coverRes));
                 }
                 adapter.update(cartBooks);
-                android.widget.TextView totalView = binding.getRoot().findViewById(R.id.cart_total_value);
-                if (totalView != null) totalView.setText(String.format(java.util.Locale.getDefault(), "$%.2f", total));
+                
+                // Safe access to binding
+                if (binding != null && binding.getRoot() != null) {
+                    android.widget.TextView totalView = binding.getRoot().findViewById(R.id.cart_total_value);
+                    if (totalView != null) totalView.setText(String.format(java.util.Locale.getDefault(), "$%.2f", total));
+                }
             }
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
-        });
+        };
+        cartRef.addValueEventListener(cartListener);
     }
 
     private void setupRecyclerView() {
@@ -78,6 +89,10 @@ public class CartFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        // Remove Firebase listener to prevent callbacks after view is destroyed
+        if (cartRef != null && cartListener != null) {
+            cartRef.removeEventListener(cartListener);
+        }
         binding = null;
     }
 

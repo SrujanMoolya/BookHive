@@ -11,28 +11,40 @@ import androidx.fragment.app.Fragment;
 import com.svvaap.bookhive.databinding.FragmentHomeBinding;
 import com.svvaap.bookhive.databinding.ItemCategoryBinding;
 import com.svvaap.bookhive.databinding.ItemBookBinding;
-import com.google.firebase.database.*;
 import com.bumptech.glide.Glide;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.List;
+import android.view.inputmethod.EditorInfo;
+import android.view.KeyEvent;
 
 public class HomeFragment extends Fragment {
     private FragmentHomeBinding binding;
-    private List<Book> allBooks = new ArrayList<>();
-    private BookAdapter bestsellerAdapter;
-    private BookAdapter newArrivalsAdapter;
+    private final List<Book> allLatestBooks = new ArrayList<>();
+    private final List<Book> latestBooks = new ArrayList<>();
+    private BookAdapter latestAdapter;
+    private DatabaseReference ebooksRef;
+    private ValueEventListener ebooksListener;
+    private String selectedCategory = "All";
+    private int selectedCategoryPosition = 0;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         setupCategoryList();
-        setupBookLists();
-        fetchBooksFromFirebase();
+        setupSearchBar();
+        setupLatestList();
+        fetchLatestBooks();
         return binding.getRoot();
     }
 
     private void setupCategoryList() {
         List<Category> categories = new ArrayList<>();
+        categories.add(new Category("All", getCategoryIconRes("All")));
         categories.add(new Category("Self-help", getCategoryIconRes("Self-help")));
         categories.add(new Category("Fiction", getCategoryIconRes("Fiction")));
         categories.add(new Category("Non-fiction", getCategoryIconRes("Non-fiction")));
@@ -47,6 +59,8 @@ public class HomeFragment extends Fragment {
         if (name == null) return R.drawable.ic_category_generic;
         String key = name.trim().toLowerCase();
         switch (key) {
+            case "all":
+                return R.drawable.ic_category_generic;
             case "self-help":
             case "selfhelp":
                 return R.drawable.ic_category_self_help;
@@ -74,41 +88,71 @@ public class HomeFragment extends Fragment {
         }
     }
 
-    private void setupBookLists() {
-        bestsellerAdapter = new BookAdapter(new ArrayList<>(), this::openBookDetail);
-        newArrivalsAdapter = new BookAdapter(new ArrayList<>(), this::openBookDetail);
-        binding.bestsellerList.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
-        binding.bestsellerList.setAdapter(bestsellerAdapter);
-        binding.newArrivalsList.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
-        binding.newArrivalsList.setAdapter(newArrivalsAdapter);
+    private void setupSearchBar() {
+        if (binding.searchBar != null) {
+            binding.searchBar.setSingleLine(true);
+            binding.searchBar.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+            binding.searchBar.setOnEditorActionListener((v, actionId, event) -> {
+                boolean isEnter = event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN;
+                if (actionId == EditorInfo.IME_ACTION_SEARCH || isEnter) {
+                    String query = v.getText() != null ? v.getText().toString().trim() : "";
+                    Bundle bundle = new Bundle();
+                    bundle.putString("initialQuery", query);
+                    androidx.navigation.fragment.NavHostFragment.findNavController(this)
+                            .navigate(R.id.SearchFragment, bundle);
+                    return true;
+                }
+                return false;
+            });
+        }
     }
 
-    private void fetchBooksFromFirebase() {
-        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("ebooks");
-        dbRef.addValueEventListener(new ValueEventListener() {
+    private void setupLatestList() {
+        latestAdapter = new BookAdapter(new ArrayList<>(latestBooks));
+        binding.latestList.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(getContext(), 3));
+        binding.latestList.setAdapter(latestAdapter);
+    }
+
+    private void fetchLatestBooks() {
+        ebooksRef = FirebaseDatabase.getInstance().getReference("ebooks");
+        ebooksListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                allBooks.clear();
+                if (binding == null) return;
+                allLatestBooks.clear();
                 for (DataSnapshot snap : snapshot.getChildren()) {
                     Book book = safeMapToBook(snap);
-                    if (book != null) {
-                        book.id = snap.getKey();
-                        allBooks.add(book);
-                    }
+                    if (book != null) { book.id = snap.getKey(); allLatestBooks.add(book); }
                 }
-                // For demo: bestsellers = first 5, new arrivals = last 5
-                List<Book> bestsellers = new ArrayList<>();
-                List<Book> newArrivals = new ArrayList<>();
-                for (int i = 0; i < allBooks.size(); i++) {
-                    if (i < 5) bestsellers.add(allBooks.get(i));
-                    if (i >= allBooks.size() - 5) newArrivals.add(allBooks.get(i));
-                }
-                bestsellerAdapter.updateBooks(bestsellers);
-                newArrivalsAdapter.updateBooks(newArrivals);
+                // Sort newest first by uploadDate (ISO string lex order works; nulls last)
+                java.util.Collections.sort(allLatestBooks, (a, b) -> compareUploadDateDesc(a.uploadDate, b.uploadDate));
+                applyCategoryFilter();
             }
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
-        });
+        };
+        ebooksRef.addValueEventListener(ebooksListener);
+    }
+
+    private void applyCategoryFilter() {
+        latestBooks.clear();
+        if (selectedCategory == null || selectedCategory.equalsIgnoreCase("All")) {
+            latestBooks.addAll(allLatestBooks);
+        } else {
+            for (Book b : allLatestBooks) {
+                if (b.category != null && b.category.equalsIgnoreCase(selectedCategory)) {
+                    latestBooks.add(b);
+                }
+            }
+        }
+        latestAdapter.updateBooks(new ArrayList<>(latestBooks));
+    }
+
+    private int compareUploadDateDesc(String d1, String d2) {
+        if (d1 == null && d2 == null) return 0;
+        if (d1 == null) return 1;
+        if (d2 == null) return -1;
+        return -d1.compareTo(d2);
     }
 
     private Book safeMapToBook(DataSnapshot snap) {
@@ -125,32 +169,23 @@ public class HomeFragment extends Fragment {
         b.fileUrl = asString(map.get("fileUrl"));
         b.visibility = asString(map.get("visibility"));
         b.uploadDate = asString(map.get("uploadDate"));
-        b.price = asDouble(map.get("price"));
+        try {
+            Object priceObj = map.get("price");
+            if (priceObj instanceof Number) b.price = ((Number) priceObj).doubleValue();
+            else if (priceObj instanceof String) b.price = Double.parseDouble((String) priceObj);
+        } catch (Exception ignored) {}
         return b;
     }
 
-    private String asString(Object v) {
-        return v == null ? null : String.valueOf(v);
-    }
-
-    private double asDouble(Object v) {
-        if (v instanceof Number) return ((Number) v).doubleValue();
-        if (v instanceof String) {
-            try { return Double.parseDouble((String) v); } catch (Exception ignored) {}
-        }
-        return 0d;
-    }
-
-    private void openBookDetail(Book book) {
-        Bundle bundle = new Bundle();
-        bundle.putString("bookId", book.id);
-        androidx.navigation.fragment.NavHostFragment.findNavController(this)
-            .navigate(R.id.BookDetailFragment, bundle);
-    }
+    private String asString(Object v) { return v == null ? null : String.valueOf(v); }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (ebooksRef != null && ebooksListener != null) {
+            ebooksRef.removeEventListener(ebooksListener);
+            ebooksListener = null;
+        }
         binding = null;
     }
 
@@ -179,7 +214,10 @@ public class HomeFragment extends Fragment {
             Category c = categories.get(position);
             holder.binding.categoryLabel.setText(c.name);
             holder.binding.categoryIcon.setImageResource(c.iconRes);
-            holder.itemView.setOnClickListener(v -> openCategory(c.name));
+            // Highlight selected category
+            boolean isSelected = position == selectedCategoryPosition;
+            holder.binding.categoryIcon.setBackgroundResource(isSelected ? R.drawable.bg_category_selected : 0);
+            holder.itemView.setOnClickListener(v -> selectCategory(c.name, position));
         }
         @Override
         public int getItemCount() { return categories.size(); }
@@ -189,37 +227,24 @@ public class HomeFragment extends Fragment {
         }
     }
 
-    private void openCategory(String category) {
-        Bundle bundle = new Bundle();
-        bundle.putString("categoryFilter", category);
-        androidx.navigation.fragment.NavHostFragment.findNavController(this)
-                .navigate(R.id.CatalogueFragment, bundle);
-    }
-
-    interface OnBookClickListener {
-        void onBookClick(Book book);
+    private void selectCategory(String category, int position) {
+        selectedCategory = category;
+        selectedCategoryPosition = position;
+        applyCategoryFilter();
+        // Refresh category chips
+        binding.categoryList.getAdapter().notifyDataSetChanged();
     }
 
     class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder> {
         List<Book> books;
-        OnBookClickListener listener;
-        BookAdapter(List<Book> books, OnBookClickListener listener) {
-            this.books = books;
-            this.listener = listener;
-        }
-
-        void updateBooks(List<Book> newBooks) {
-            this.books = newBooks;
-            notifyDataSetChanged();
-        }
-
+        BookAdapter(List<Book> books) { this.books = books; }
+        void updateBooks(List<Book> newBooks) { this.books = newBooks; notifyDataSetChanged(); }
         @NonNull
         @Override
         public BookViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             ItemBookBinding b = ItemBookBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false);
             return new BookViewHolder(b);
         }
-
         @Override
         public void onBindViewHolder(@NonNull BookViewHolder holder, int position) {
             Book book = books.get(position);
@@ -229,25 +254,20 @@ public class HomeFragment extends Fragment {
                     .load(book.coverImageUrl)
                     .placeholder(R.drawable.sample_book_cover)
                     .into(holder.binding.bookCover);
-
             holder.itemView.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onBookClick(book);
+                if (book.id != null) {
+                    Bundle bundle = new Bundle();
+                    bundle.putString("bookId", book.id);
+                    androidx.navigation.fragment.NavHostFragment.findNavController(HomeFragment.this)
+                            .navigate(R.id.BookDetailFragment, bundle);
                 }
             });
         }
-
         @Override
-        public int getItemCount() {
-            return books.size();
-        }
-
+        public int getItemCount() { return books.size(); }
         class BookViewHolder extends RecyclerView.ViewHolder {
             ItemBookBinding binding;
-            BookViewHolder(ItemBookBinding b) {
-                super(b.getRoot());
-                binding = b;
-            }
+            BookViewHolder(ItemBookBinding b) { super(b.getRoot()); binding = b; }
         }
     }
 }

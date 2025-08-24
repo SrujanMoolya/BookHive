@@ -21,13 +21,21 @@ public class SearchFragment extends Fragment {
     private FragmentSearchBinding binding;
     private List<com.svvaap.bookhive.Book> allBooks = new ArrayList<>();
     private BookAdapter adapter;
+    private String initialQuery;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentSearchBinding.inflate(inflater, container, false);
+        if (getArguments() != null) {
+            initialQuery = getArguments().getString("initialQuery", null);
+        }
         setupRecyclerView();
         fetchBooksFromFirebase();
         setupSearch();
+        if (initialQuery != null && !initialQuery.isEmpty()) {
+            binding.searchInput.setText(initialQuery);
+            binding.searchInput.setSelection(binding.searchInput.getText().length());
+        }
         return binding.getRoot();
     }
 
@@ -42,7 +50,12 @@ public class SearchFragment extends Fragment {
                     if (book != null) { book.id = snap.getKey(); allBooks.add(book); }
                 }
                 adapter.updateBooks(new ArrayList<>(allBooks));
-                binding.noResultsText.setVisibility(allBooks.isEmpty() ? View.VISIBLE : View.GONE);
+                String current = binding.searchInput.getText() != null ? binding.searchInput.getText().toString() : "";
+                if (current.isEmpty()) {
+                    binding.noResultsText.setVisibility(allBooks.isEmpty() ? View.VISIBLE : View.GONE);
+                } else {
+                    filterBooks(current);
+                }
             }
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
@@ -102,8 +115,10 @@ public class SearchFragment extends Fragment {
     private void filterBooks(String query) {
         List<com.svvaap.bookhive.Book> filtered = new ArrayList<>();
         for (com.svvaap.bookhive.Book book : allBooks) {
-            if (book.title.toLowerCase().contains(query.toLowerCase()) ||
-                book.author.toLowerCase().contains(query.toLowerCase())) {
+            String title = book.title != null ? book.title : "";
+            String author = book.author != null ? book.author : "";
+            if (title.toLowerCase().contains(query.toLowerCase()) ||
+                author.toLowerCase().contains(query.toLowerCase())) {
                 filtered.add(book);
             }
         }

@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
+import androidx.navigation.NavOptions;
 import androidx.navigation.fragment.NavHostFragment;
 import com.svvaap.bookhive.databinding.FragmentLoginBinding;
 import com.google.android.gms.auth.api.signin.*;
@@ -131,9 +132,12 @@ public class LoginFragment extends Fragment {
                 user.getEmail(),
                 user.getPhotoUrl() != null ? user.getPhotoUrl().toString() : ""
         ));
-        // Navigate to Profile
+        // Navigate to Home and clear Login from back stack
         NavController navController = NavHostFragment.findNavController(LoginFragment.this);
-        navController.navigate(R.id.action_LoginFragment_to_ProfileFragment);
+        NavOptions navOptions = new NavOptions.Builder()
+                .setPopUpTo(R.id.nav_graph, true)
+                .build();
+        navController.navigate(R.id.HomeFragment, null, navOptions);
     }
 
     public static class UserProfile {

@@ -27,6 +27,10 @@ public class CatalogueFragment extends Fragment {
     private FragmentCatalogueBinding binding;
     private List<Book> allBooks = new ArrayList<>();
     private BookAdapter adapter;
+    private DatabaseReference ebooksRef;
+    private ValueEventListener ebooksListener;
+    private DatabaseReference userPurchasesRef;
+    private ValueEventListener userPurchasesListener;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -50,11 +54,13 @@ public class CatalogueFragment extends Fragment {
     private void fetchBooksFromFirebase() {
         // If "My Books" (purchased) view, filter by purchases/{uid}
         String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
-        if (uid != null) {
-            DatabaseReference purchasesRef = FirebaseDatabase.getInstance().getReference("purchases").child(uid);
-            purchasesRef.addValueEventListener(new ValueEventListener() {
+        if (uid != null && getArguments() != null && getArguments().getString("categoryFilter") == null) {
+            // User is logged in and accessing "My Books" - show purchased books
+            userPurchasesRef = FirebaseDatabase.getInstance().getReference("purchases").child(uid);
+            userPurchasesListener = new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    if (binding == null) return;
                     java.util.Set<String> purchasedIds = new java.util.HashSet<>();
                     for (DataSnapshot s : snapshot.getChildren()) {
                         purchasedIds.add(s.getKey());
@@ -63,13 +69,20 @@ public class CatalogueFragment extends Fragment {
                 }
                 @Override
                 public void onCancelled(@NonNull DatabaseError error) {}
-            });
+            };
+            userPurchasesRef.addValueEventListener(userPurchasesListener);
+            return;
+        } else if (uid == null && getArguments() != null && getArguments().getString("categoryFilter") == null) {
+            // User not logged in and trying to access "My Books" - show login prompt
+            showLoginPrompt();
             return;
         }
-        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("ebooks");
-        dbRef.addValueEventListener(new ValueEventListener() {
+        // Show all books (for category browsing or general catalogue)
+        ebooksRef = FirebaseDatabase.getInstance().getReference("ebooks");
+        ebooksListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (binding == null) return;
                 allBooks.clear();
                 for (DataSnapshot snap : snapshot.getChildren()) {
                     Book book = safeMapToBook(snap);
@@ -87,11 +100,23 @@ public class CatalogueFragment extends Fragment {
                 } else {
                     adapter.updateBooks(new ArrayList<>(allBooks));
                 }
-                binding.noBooksText.setVisibility(allBooks.isEmpty() ? View.VISIBLE : View.GONE);
+                safeSetNoBooksVisibility(allBooks.isEmpty());
             }
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
-        });
+        };
+        ebooksRef.addValueEventListener(ebooksListener);
+    }
+
+    private void showLoginPrompt() {
+        if (binding == null) return;
+        binding.catalogueGrid.setVisibility(View.GONE);
+        binding.catalogueSearchInput.setVisibility(View.GONE);
+        binding.noBooksText.setVisibility(View.VISIBLE);
+        binding.noBooksText.setText("Please login to view your purchased books");
+        binding.noBooksText.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+        binding.noBooksText.setTextSize(16);
+        binding.noBooksText.setTextColor(getResources().getColor(android.R.color.darker_gray));
     }
 
     private Book safeMapToBook(DataSnapshot snap) {
@@ -129,16 +154,17 @@ public class CatalogueFragment extends Fragment {
         dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (binding == null) return;
                 allBooks.clear();
                 for (DataSnapshot snap : snapshot.getChildren()) {
                     String id = snap.getKey();
                     if (id != null && ids.contains(id)) {
-                        Book book = snap.getValue(Book.class);
+                        Book book = safeMapToBook(snap);
                         if (book != null) { book.id = id; allBooks.add(book); }
                     }
                 }
                 adapter.updateBooks(new ArrayList<>(allBooks));
-                binding.noBooksText.setVisibility(allBooks.isEmpty() ? View.VISIBLE : View.GONE);
+                safeSetNoBooksVisibility(allBooks.isEmpty());
             }
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
@@ -149,7 +175,7 @@ public class CatalogueFragment extends Fragment {
         adapter = new BookAdapter(new ArrayList<>(allBooks));
         binding.catalogueGrid.setLayoutManager(new GridLayoutManager(getContext(), 2));
          binding.catalogueGrid.setAdapter(adapter);
-        binding.noBooksText.setVisibility(View.GONE);
+        safeSetNoBooksVisibility(false);
     }
 
     private void setupSearch() {
@@ -174,7 +200,7 @@ public class CatalogueFragment extends Fragment {
             }
         }
         adapter.updateBooks(filtered);
-        binding.noBooksText.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
+        safeSetNoBooksVisibility(filtered.isEmpty());
     }
 
     private void filterByCategory(String category) {
@@ -185,13 +211,33 @@ public class CatalogueFragment extends Fragment {
             }
         }
         adapter.updateBooks(filtered);
-        binding.noBooksText.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
+        safeSetNoBooksVisibility(filtered.isEmpty());
+    }
+
+    private void safeSetNoBooksVisibility(boolean show) {
+        if (binding == null) return;
+        binding.noBooksText.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (ebooksRef != null && ebooksListener != null) {
+            ebooksRef.removeEventListener(ebooksListener);
+            ebooksListener = null;
+        }
+        if (userPurchasesRef != null && userPurchasesListener != null) {
+            userPurchasesRef.removeEventListener(userPurchasesListener);
+            userPurchasesListener = null;
+        }
         binding = null;
+    }
+
+    private void openBookDetails(Book book) {
+        Bundle args = new Bundle();
+        args.putString("bookId", book.id);
+        androidx.navigation.fragment.NavHostFragment.findNavController(this)
+                .navigate(R.id.BookDetailFragment, args);
     }
 
     // --- Data Model ---
@@ -229,6 +275,9 @@ public class CatalogueFragment extends Fragment {
                 .load(book.coverImageUrl)
                 .placeholder(R.drawable.sample_book_cover)
                 .into(holder.binding.bookCover);
+            
+            // Add click listener to open book details
+            holder.itemView.setOnClickListener(v -> openBookDetails(book));
         }
         @Override
         public int getItemCount() { return books.size(); }

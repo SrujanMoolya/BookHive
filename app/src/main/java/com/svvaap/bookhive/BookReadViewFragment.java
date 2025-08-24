@@ -48,7 +48,7 @@ public class BookReadViewFragment extends Fragment {
         dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                Book book = snapshot.getValue(Book.class);
+                Book book = safeMapToBook(snapshot);
                 if (book == null || book.fileUrl == null || book.fileUrl.isEmpty()) {
                     showNotAvailableError();
                     return;
@@ -66,10 +66,20 @@ public class BookReadViewFragment extends Fragment {
         WebView webView = new WebView(requireContext());
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
         webView.setWebViewClient(new WebViewClient());
-        webView.loadUrl(url);
+
+        String toLoad = url;
+        try {
+            if (url != null && url.toLowerCase(java.util.Locale.ROOT).endsWith(".pdf")) {
+                String encoded = java.net.URLEncoder.encode(url, "UTF-8");
+                toLoad = "https://docs.google.com/gview?embedded=1&url=" + encoded;
+            }
+        } catch (Exception ignored) {}
+
+        webView.loadUrl(toLoad);
         binding.getRoot().removeAllViews();
         binding.getRoot().addView(webView,
                 new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -79,5 +89,35 @@ public class BookReadViewFragment extends Fragment {
         binding.textviewBookReadView.setText("Book not available");
         binding.textviewBookReadView.setTextColor(0xFFE53935);
         binding.textviewBookReadView.setBackgroundColor(0xFFFFEBEE);
+    }
+
+    private Book safeMapToBook(DataSnapshot snap) {
+        Object raw = snap.getValue();
+        if (!(raw instanceof java.util.Map)) return snap.getValue(Book.class);
+        java.util.Map map = (java.util.Map) raw;
+        Book b = new Book();
+        b.title = asString(map.get("title"));
+        b.author = asString(map.get("author"));
+        b.category = asString(map.get("category"));
+        b.language = asString(map.get("language"));
+        b.description = asString(map.get("description"));
+        b.coverImageUrl = asString(map.get("coverImageUrl"));
+        b.fileUrl = asString(map.get("fileUrl"));
+        b.visibility = asString(map.get("visibility"));
+        b.uploadDate = asString(map.get("uploadDate"));
+        b.price = asDouble(map.get("price"));
+        return b;
+    }
+
+    private String asString(Object v) {
+        return v == null ? null : String.valueOf(v);
+    }
+
+    private double asDouble(Object v) {
+        if (v instanceof Number) return ((Number) v).doubleValue();
+        if (v instanceof String) {
+            try { return Double.parseDouble((String) v); } catch (Exception ignored) {}
+        }
+        return 0d;
     }
 } 

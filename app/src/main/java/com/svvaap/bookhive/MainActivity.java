@@ -28,7 +28,7 @@ public class MainActivity extends AppCompatActivity implements PaymentResultList
         if (navHostFragment != null) {
             NavController navController = navHostFragment.getNavController();
             AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
-                    R.id.HomeFragment, R.id.SearchFragment, R.id.CatalogueFragment, R.id.ProfileFragment, R.id.CartFragment
+                    R.id.HomeFragment, R.id.CatalogueFragment, R.id.ProfileFragment, R.id.CartFragment
             ).build();
             NavigationUI.setupWithNavController(toolbar, navController, appBarConfiguration);
             // Enable Up button across all fragments
@@ -38,8 +38,8 @@ public class MainActivity extends AppCompatActivity implements PaymentResultList
             BottomNavigationView bottomNav = findViewById(R.id.bottom_nav_view);
             NavigationUI.setupWithNavController(bottomNav, navController);
 
-            // If user is not logged in, show Login screen first
-            if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            // Check if we should show login screen
+            if (getIntent().getBooleanExtra("showLogin", false)) {
                 navController.navigate(R.id.LoginFragment);
             }
         }
