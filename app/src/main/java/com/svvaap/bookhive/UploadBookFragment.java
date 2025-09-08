@@ -191,14 +191,25 @@ public class UploadBookFragment extends Fragment {
 
     private String uploadToCloudinary(Uri uri, boolean isImage) throws Exception {
         if (uri == null) throw new IllegalArgumentException("No file selected");
-        String cloudName = BuildConfig.CLOUDINARY_CLOUD_NAME;
-        String unsignedPreset = BuildConfig.CLOUDINARY_UNSIGNED_PRESET;
-        if (TextUtils.isEmpty(cloudName) || TextUtils.isEmpty(unsignedPreset)) {
-            throw new IllegalStateException("Cloudinary not configured");
-        }
 
-        String uploadUrl = "https://api.cloudinary.com/v1_1/" + cloudName + "/" + (isImage ? "image" : "raw") + "/upload";
+        // Step 1: Get signature from your Vercel API
+        okhttp3.OkHttpClient client = new okhttp3.OkHttpClient();
+        okhttp3.Request sigRequest = new okhttp3.Request.Builder()
+                .url("https://bookhive-backend.vercel.app/api/get-signature.js")
+                .build();
 
+        okhttp3.Response sigResponse = client.newCall(sigRequest).execute();
+        if (!sigResponse.isSuccessful()) throw new IllegalStateException("Failed to get signature");
+        String sigBody = sigResponse.body().string();
+        org.json.JSONObject sigJson = new org.json.JSONObject(sigBody);
+
+        String cloudName = sigJson.getString("cloudName");
+        String apiKey = sigJson.getString("apiKey");
+        String signature = sigJson.getString("signature");
+        String timestamp = String.valueOf(sigJson.getLong("timestamp"));
+        String folder = sigJson.getString("folder");
+
+        // Step 2: Prepare file
         android.content.ContentResolver resolver = requireContext().getContentResolver();
         java.io.InputStream inputStream = resolver.openInputStream(uri);
         if (inputStream == null) throw new IllegalStateException("Cannot open file");
@@ -206,26 +217,31 @@ public class UploadBookFragment extends Fragment {
         okhttp3.MediaType mediaType = okhttp3.MediaType.parse(isImage ? "image/*" : "application/pdf");
         okhttp3.RequestBody fileBody = okhttp3.RequestBody.create(readAllBytes(inputStream), mediaType);
 
+        // Step 3: Build request to Cloudinary
         okhttp3.MultipartBody requestBody = new okhttp3.MultipartBody.Builder()
                 .setType(okhttp3.MultipartBody.FORM)
-                .addFormDataPart("upload_preset", unsignedPreset)
-                .addFormDataPart("file", "upload" + (isImage ? ".jpg" : ".pdf"), fileBody)
+                .addFormDataPart("file", isImage ? "cover.jpg" : "book.pdf", fileBody)
+                .addFormDataPart("api_key", apiKey)
+                .addFormDataPart("timestamp", timestamp)
+                .addFormDataPart("signature", signature)
+                .addFormDataPart("folder", folder)
                 .build();
 
-        okhttp3.Request request = new okhttp3.Request.Builder()
+        String uploadUrl = "https://api.cloudinary.com/v1_1/" + cloudName + "/auto/upload";
+        okhttp3.Request uploadRequest = new okhttp3.Request.Builder()
                 .url(uploadUrl)
                 .post(requestBody)
                 .build();
 
-        okhttp3.OkHttpClient client = new okhttp3.OkHttpClient();
-        try (okhttp3.Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) throw new IllegalStateException("Upload failed: " + response.code());
-            String body = response.body() != null ? response.body().string() : null;
-            if (body == null) throw new IllegalStateException("Empty response");
-            org.json.JSONObject json = new org.json.JSONObject(body);
-            return json.optString("secure_url", json.optString("url"));
-        }
+        okhttp3.Response uploadResponse = client.newCall(uploadRequest).execute();
+        if (!uploadResponse.isSuccessful()) throw new IllegalStateException("Upload failed: " + uploadResponse.code());
+        String uploadBody = uploadResponse.body() != null ? uploadResponse.body().string() : null;
+        if (uploadBody == null) throw new IllegalStateException("Empty upload response");
+
+        org.json.JSONObject uploadJson = new org.json.JSONObject(uploadBody);
+        return uploadJson.optString("secure_url", uploadJson.optString("url"));
     }
+
 
     private byte[] readAllBytes(java.io.InputStream is) throws java.io.IOException {
         java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();

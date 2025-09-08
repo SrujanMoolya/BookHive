@@ -24,6 +24,7 @@ public class ManageUsersFragment extends Fragment {
     private List<User> users = new ArrayList<>();
     private UserAdapter adapter;
     private DatabaseReference usersRef;
+    private ValueEventListener usersListener;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -34,14 +35,14 @@ public class ManageUsersFragment extends Fragment {
     }
 
     private void setupRecyclerView() {
-        adapter = new UserAdapter(users, this::toggleUserStatus);
+        adapter = new UserAdapter(requireContext(), users, this::toggleUserStatus);
         binding.usersRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.usersRecyclerView.setAdapter(adapter);
     }
 
     private void fetchUsers() {
         usersRef = FirebaseDatabase.getInstance().getReference("users");
-        usersRef.addValueEventListener(new ValueEventListener() {
+        usersListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 users.clear();
@@ -60,7 +61,8 @@ public class ManageUsersFragment extends Fragment {
             public void onCancelled(@NonNull DatabaseError error) {
                 // Handle error
             }
-        });
+        };
+        usersRef.addValueEventListener(usersListener);
     }
 
     private void toggleUserStatus(User user) {
@@ -80,8 +82,8 @@ public class ManageUsersFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        if (usersRef != null) {
-            usersRef.removeEventListener(null);
+        if (usersRef != null && usersListener != null) {
+            usersRef.removeEventListener(usersListener);
         }
         binding = null;
     }
@@ -100,15 +102,17 @@ public class ManageUsersFragment extends Fragment {
     }
 
     // User adapter
-    private class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
-        private List<User> userList;
-        private OnUserActionListener actionListener;
+    private static class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
+        private final List<User> userList;
+        private final OnUserActionListener actionListener;
+        private final android.content.Context context;
 
         public interface OnUserActionListener {
             void onUserAction(User user);
         }
 
-        public UserAdapter(List<User> userList, OnUserActionListener actionListener) {
+        public UserAdapter(android.content.Context context, List<User> userList, OnUserActionListener actionListener) {
+            this.context = context;
             this.userList = userList;
             this.actionListener = actionListener;
         }
@@ -132,7 +136,7 @@ public class ManageUsersFragment extends Fragment {
         }
 
         class UserViewHolder extends RecyclerView.ViewHolder {
-            private TextView userNameText, userEmailText, userStatusText, joinDateText, purchasesText, actionButton;
+            private final TextView userNameText, userEmailText, userStatusText, joinDateText, purchasesText, actionButton;
 
             public UserViewHolder(@NonNull View itemView) {
                 super(itemView);
@@ -151,10 +155,10 @@ public class ManageUsersFragment extends Fragment {
                 joinDateText.setText(user.joinDate != null ? user.joinDate : "Unknown Date");
                 purchasesText.setText("Purchases: " + user.totalPurchases);
 
-                // Set status color
+                // Set status color using context
                 int statusColor = "active".equals(user.status) ? 
-                    getResources().getColor(android.R.color.holo_green_dark) : 
-                    getResources().getColor(android.R.color.holo_red_dark);
+                    context.getResources().getColor(android.R.color.holo_green_dark) : 
+                    context.getResources().getColor(android.R.color.holo_red_dark);
                 userStatusText.setTextColor(statusColor);
 
                 // Set action button

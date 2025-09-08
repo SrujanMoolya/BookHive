@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -23,6 +24,7 @@ public class ManageBooksFragment extends Fragment {
     private List<Book> books = new ArrayList<>();
     private ManageBookAdapter adapter;
     private DatabaseReference booksRef;
+    private ValueEventListener booksListener;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -33,14 +35,14 @@ public class ManageBooksFragment extends Fragment {
     }
 
     private void setupRecyclerView() {
-        adapter = new ManageBookAdapter(books, this::deleteBook, this::toggleBookVisibility);
+        adapter = new ManageBookAdapter(requireContext(), books, this::deleteBook, this::toggleBookVisibility);
         binding.booksRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.booksRecyclerView.setAdapter(adapter);
     }
 
     private void fetchBooks() {
         booksRef = FirebaseDatabase.getInstance().getReference("ebooks");
-        booksRef.addValueEventListener(new ValueEventListener() {
+        booksListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 books.clear();
@@ -59,7 +61,8 @@ public class ManageBooksFragment extends Fragment {
             public void onCancelled(@NonNull DatabaseError error) {
                 // Handle error
             }
-        });
+        };
+        booksRef.addValueEventListener(booksListener);
     }
 
     private void deleteBook(Book book) {
@@ -92,23 +95,25 @@ public class ManageBooksFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        if (booksRef != null) {
-            booksRef.removeEventListener(null);
+        if (booksRef != null && booksListener != null) {
+            booksRef.removeEventListener(booksListener);
         }
         binding = null;
     }
 
     // ManageBook adapter
-    private class ManageBookAdapter extends RecyclerView.Adapter<ManageBookAdapter.ManageBookViewHolder> {
-        private List<Book> bookList;
-        private OnBookActionListener deleteListener;
-        private OnBookActionListener visibilityListener;
+    private static class ManageBookAdapter extends RecyclerView.Adapter<ManageBookAdapter.ManageBookViewHolder> {
+        private final List<Book> bookList;
+        private final OnBookActionListener deleteListener;
+        private final OnBookActionListener visibilityListener;
+        private final android.content.Context context;
 
         public interface OnBookActionListener {
             void onBookAction(Book book);
         }
 
-        public ManageBookAdapter(List<Book> bookList, OnBookActionListener deleteListener, OnBookActionListener visibilityListener) {
+        public ManageBookAdapter(android.content.Context context, List<Book> bookList, OnBookActionListener deleteListener, OnBookActionListener visibilityListener) {
+            this.context = context;
             this.bookList = bookList;
             this.deleteListener = deleteListener;
             this.visibilityListener = visibilityListener;
@@ -154,10 +159,10 @@ public class ManageBooksFragment extends Fragment {
                 bookPriceText.setText("$" + book.price);
                 bookVisibilityText.setText(book.visibility != null ? book.visibility.toUpperCase() : "PRIVATE");
 
-                // Set visibility color
+                // Set visibility color using context
                 int visibilityColor = "public".equals(book.visibility) ? 
-                    getResources().getColor(android.R.color.holo_green_dark) : 
-                    getResources().getColor(android.R.color.holo_red_dark);
+                    context.getResources().getColor(android.R.color.holo_green_dark) : 
+                    context.getResources().getColor(android.R.color.holo_red_dark);
                 bookVisibilityText.setTextColor(visibilityColor);
 
                 // Set button listeners

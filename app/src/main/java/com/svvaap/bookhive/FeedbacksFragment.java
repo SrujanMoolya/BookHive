@@ -24,6 +24,7 @@ public class FeedbacksFragment extends Fragment {
     private List<Feedback> feedbacks = new ArrayList<>();
     private FeedbackAdapter adapter;
     private DatabaseReference feedbacksRef;
+    private ValueEventListener feedbacksListener;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -41,13 +42,13 @@ public class FeedbacksFragment extends Fragment {
 
     private void fetchFeedbacks() {
         feedbacksRef = FirebaseDatabase.getInstance().getReference("feedbacks");
-        feedbacksRef.addValueEventListener(new ValueEventListener() {
+        feedbacksListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 feedbacks.clear();
                 double totalRating = 0;
                 int totalFeedbacks = 0;
-                
+
                 for (DataSnapshot feedbackSnap : snapshot.getChildren()) {
                     Feedback feedback = feedbackSnap.getValue(Feedback.class);
                     if (feedback != null) {
@@ -57,10 +58,10 @@ public class FeedbacksFragment extends Fragment {
                         totalFeedbacks++;
                     }
                 }
-                
+
                 // Sort by date (newest first)
                 Collections.sort(feedbacks, (a, b) -> b.date.compareTo(a.date));
-                
+
                 // Update UI
                 if (totalFeedbacks > 0) {
                     double averageRating = totalRating / totalFeedbacks;
@@ -70,7 +71,7 @@ public class FeedbacksFragment extends Fragment {
                     binding.averageRatingText.setText("0.0");
                     binding.totalFeedbacksText.setText("0");
                 }
-                
+
                 adapter.notifyDataSetChanged();
                 binding.noFeedbacksText.setVisibility(feedbacks.isEmpty() ? View.VISIBLE : View.GONE);
             }
@@ -79,14 +80,15 @@ public class FeedbacksFragment extends Fragment {
             public void onCancelled(@NonNull DatabaseError error) {
                 // Handle error
             }
-        });
+        };
+        feedbacksRef.addValueEventListener(feedbacksListener);
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        if (feedbacksRef != null) {
-            feedbacksRef.removeEventListener(null);
+        if (feedbacksRef != null && feedbacksListener != null) {
+            feedbacksRef.removeEventListener(feedbacksListener);
         }
         binding = null;
     }

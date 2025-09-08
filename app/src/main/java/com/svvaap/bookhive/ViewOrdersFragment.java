@@ -23,6 +23,7 @@ public class ViewOrdersFragment extends Fragment {
     private List<Order> orders = new ArrayList<>();
     private OrderAdapter adapter;
     private DatabaseReference ordersRef;
+    private ValueEventListener ordersListener;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -40,7 +41,7 @@ public class ViewOrdersFragment extends Fragment {
 
     private void fetchOrders() {
         ordersRef = FirebaseDatabase.getInstance().getReference("orders");
-        ordersRef.addValueEventListener(new ValueEventListener() {
+        ordersListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 orders.clear();
@@ -59,14 +60,15 @@ public class ViewOrdersFragment extends Fragment {
             public void onCancelled(@NonNull DatabaseError error) {
                 // Handle error
             }
-        });
+        };
+        ordersRef.addValueEventListener(ordersListener);
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        if (ordersRef != null) {
-            ordersRef.removeEventListener(null);
+        if (ordersRef != null && ordersListener != null) {
+            ordersRef.removeEventListener(ordersListener);
         }
         binding = null;
     }

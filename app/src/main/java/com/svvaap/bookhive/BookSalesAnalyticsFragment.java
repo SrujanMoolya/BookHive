@@ -26,6 +26,7 @@ public class BookSalesAnalyticsFragment extends Fragment {
     private BookSaleAdapter adapter;
     private DatabaseReference ordersRef;
     private DatabaseReference booksRef;
+    private ValueEventListener ordersListener;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -44,20 +45,20 @@ public class BookSalesAnalyticsFragment extends Fragment {
     private void fetchSalesData() {
         ordersRef = FirebaseDatabase.getInstance().getReference("orders");
         booksRef = FirebaseDatabase.getInstance().getReference("ebooks");
-        
-        ordersRef.addValueEventListener(new ValueEventListener() {
+
+        ordersListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 bookSales.clear();
                 double totalRevenue = 0;
                 int totalOrders = 0;
-                
+
                 for (DataSnapshot orderSnap : snapshot.getChildren()) {
                     Order order = orderSnap.getValue(Order.class);
                     if (order != null && "completed".equals(order.status)) {
                         totalRevenue += order.bookPrice;
                         totalOrders++;
-                        
+
                         // Find book details
                         BookSale bookSale = new BookSale();
                         bookSale.bookId = order.bookId;
@@ -65,7 +66,7 @@ public class BookSalesAnalyticsFragment extends Fragment {
                         bookSale.bookAuthor = order.bookAuthor;
                         bookSale.salesCount = 1;
                         bookSale.revenue = order.bookPrice;
-                        
+
                         // Check if book already exists in list
                         boolean found = false;
                         for (BookSale existing : bookSales) {
@@ -76,21 +77,21 @@ public class BookSalesAnalyticsFragment extends Fragment {
                                 break;
                             }
                         }
-                        
+
                         if (!found) {
                             bookSales.add(bookSale);
                         }
                     }
                 }
-                
+
                 // Sort by revenue (highest first)
                 Collections.sort(bookSales, (a, b) -> Double.compare(b.revenue, a.revenue));
-                
+
                 // Update UI
                 binding.totalRevenueText.setText("$" + String.format("%.2f", totalRevenue));
                 binding.totalOrdersText.setText(String.valueOf(totalOrders));
                 binding.topBooksText.setText("Top " + Math.min(bookSales.size(), 5) + " Books");
-                
+
                 adapter.notifyDataSetChanged();
                 binding.noDataText.setVisibility(bookSales.isEmpty() ? View.VISIBLE : View.GONE);
             }
@@ -99,14 +100,15 @@ public class BookSalesAnalyticsFragment extends Fragment {
             public void onCancelled(@NonNull DatabaseError error) {
                 // Handle error
             }
-        });
+        };
+        ordersRef.addValueEventListener(ordersListener);
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        if (ordersRef != null) {
-            ordersRef.removeEventListener(null);
+        if (ordersRef != null && ordersListener != null) {
+            ordersRef.removeEventListener(ordersListener);
         }
         binding = null;
     }
