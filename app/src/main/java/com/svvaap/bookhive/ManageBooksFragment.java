@@ -44,7 +44,13 @@ public class ManageBooksFragment extends Fragment {
     }
 
     private void fetchPurchasedBooks() {
-        String userId = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid();
+        com.google.firebase.auth.FirebaseUser user = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            // User not logged in, show all books or show a message
+            fetchBooksByIds(new ArrayList<>()); // Pass empty list to show no books, or call fetchBooks() to show all
+            return;
+        }
+        String userId = user.getUid();
         DatabaseReference purchasesRef = com.google.firebase.database.FirebaseDatabase.getInstance()
                 .getReference("users").child(userId).child("purchases");
 
@@ -73,10 +79,13 @@ public class ManageBooksFragment extends Fragment {
             public void onDataChange(@NonNull com.google.firebase.database.DataSnapshot snapshot) {
                 books.clear();
                 for (com.google.firebase.database.DataSnapshot bookSnap : snapshot.getChildren()) {
-                    Book book = bookSnap.getValue(Book.class);
-                    if (book != null && bookIds.contains(book.id)) {
-                        book.id = bookSnap.getKey();
-                        books.add(book);
+                    Book book = safeMapToBook(bookSnap);
+                    String key = bookSnap.getKey();
+                    if (book != null) {
+                        book.id = key;
+                        if (bookIds == null || bookIds.isEmpty() || bookIds.contains(book.id)) {
+                            books.add(book);
+                        }
                     }
                 }
                 adapter.notifyDataSetChanged();
@@ -89,6 +98,46 @@ public class ManageBooksFragment extends Fragment {
             }
         };
         booksRef.addValueEventListener(booksListener);
+    }
+
+    // Defensive mapping: avoid Firebase automatic failures when types mismatch (e.g., price stored as string)
+    private Book safeMapToBook(DataSnapshot snap) {
+        if (snap == null) return null;
+        Object raw = snap.getValue();
+        if (!(raw instanceof java.util.Map)) {
+            // fallback to automatic mapping
+            try {
+                return snap.getValue(Book.class);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        java.util.Map map = (java.util.Map) raw;
+        Book b = new Book();
+        b.title = asString(map.get("title"));
+        b.author = asString(map.get("author"));
+        b.category = asString(map.get("category"));
+        b.language = asString(map.get("language"));
+        b.description = asString(map.get("description"));
+        b.coverImageUrl = asString(map.get("coverImageUrl"));
+        b.fileUrl = asString(map.get("fileUrl"));
+        b.visibility = asString(map.get("visibility"));
+        b.uploadDate = asString(map.get("uploadDate"));
+        b.price = asDouble(map.get("price"));
+        return b;
+    }
+
+    private String asString(Object v) {
+        return v == null ? null : String.valueOf(v);
+    }
+
+    private double asDouble(Object v) {
+        if (v == null) return 0d;
+        if (v instanceof Number) return ((Number) v).doubleValue();
+        if (v instanceof String) {
+            try { return Double.parseDouble(((String) v).trim()); } catch (Exception ignored) {}
+        }
+        return 0d;
     }
 
     private void deleteBook(Book book) {
