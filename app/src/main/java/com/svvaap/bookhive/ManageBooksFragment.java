@@ -26,11 +26,14 @@ public class ManageBooksFragment extends Fragment {
     private DatabaseReference booksRef;
     private ValueEventListener booksListener;
 
+    // For purchased books filtering
+    private List<String> purchasedBookIds = new ArrayList<>();
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentManageBooksBinding.inflate(inflater, container, false);
         setupRecyclerView();
-        fetchBooks();
+        fetchPurchasedBooks();
         return binding.getRoot();
     }
 
@@ -40,15 +43,38 @@ public class ManageBooksFragment extends Fragment {
         binding.booksRecyclerView.setAdapter(adapter);
     }
 
-    private void fetchBooks() {
-        booksRef = FirebaseDatabase.getInstance().getReference("ebooks");
-        booksListener = new ValueEventListener() {
+    private void fetchPurchasedBooks() {
+        String userId = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid();
+        DatabaseReference purchasesRef = com.google.firebase.database.FirebaseDatabase.getInstance()
+                .getReference("users").child(userId).child("purchases");
+
+        purchasesRef.addListenerForSingleValueEvent(new com.google.firebase.database.ValueEventListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
+            public void onDataChange(@NonNull com.google.firebase.database.DataSnapshot snapshot) {
+                purchasedBookIds.clear();
+                for (com.google.firebase.database.DataSnapshot ds : snapshot.getChildren()) {
+                    String bookId = ds.getValue(String.class);
+                    if (bookId != null) purchasedBookIds.add(bookId);
+                }
+                fetchBooksByIds(purchasedBookIds);
+            }
+
+            @Override
+            public void onCancelled(@NonNull com.google.firebase.database.DatabaseError error) {
+                // Handle error if needed
+            }
+        });
+    }
+
+    private void fetchBooksByIds(List<String> bookIds) {
+        booksRef = com.google.firebase.database.FirebaseDatabase.getInstance().getReference("ebooks");
+        booksListener = new com.google.firebase.database.ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull com.google.firebase.database.DataSnapshot snapshot) {
                 books.clear();
-                for (DataSnapshot bookSnap : snapshot.getChildren()) {
+                for (com.google.firebase.database.DataSnapshot bookSnap : snapshot.getChildren()) {
                     Book book = bookSnap.getValue(Book.class);
-                    if (book != null) {
+                    if (book != null && bookIds.contains(book.id)) {
                         book.id = bookSnap.getKey();
                         books.add(book);
                     }
@@ -58,7 +84,7 @@ public class ManageBooksFragment extends Fragment {
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {
+            public void onCancelled(@NonNull com.google.firebase.database.DatabaseError error) {
                 // Handle error
             }
         };

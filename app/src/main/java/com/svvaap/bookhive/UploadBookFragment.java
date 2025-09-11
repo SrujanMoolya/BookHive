@@ -227,7 +227,9 @@ public class UploadBookFragment extends Fragment {
                 .addFormDataPart("folder", folder)
                 .build();
 
-        String uploadUrl = "https://api.cloudinary.com/v1_1/" + cloudName + "/auto/upload";
+        // String uploadUrl = "https://api.cloudinary.com/v1_1/" + cloudName + "/auto/upload";
+        String resourceType = isImage ? "image" : "raw";
+String uploadUrl = "https://api.cloudinary.com/v1_1/" + cloudName + "/" + resourceType + "/upload";
         okhttp3.Request uploadRequest = new okhttp3.Request.Builder()
                 .url(uploadUrl)
                 .post(requestBody)

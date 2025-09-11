@@ -52,18 +52,31 @@ public class CatalogueFragment extends Fragment {
     }
 
     private void fetchBooksFromFirebase() {
-        // If "My Books" (purchased) view, filter by purchases/{uid}
         String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
-        if (uid != null && getArguments() != null && getArguments().getString("categoryFilter") == null) {
-            // User is logged in and accessing "My Books" - show purchased books
-            userPurchasesRef = FirebaseDatabase.getInstance().getReference("purchases").child(uid);
+        Bundle args = getArguments();
+        boolean isMyBooksView = args != null && args.getBoolean("myBooksOnly", false);
+
+        if (isMyBooksView) {
+            if (uid == null) {
+                showLoginPrompt();
+                return;
+            }
+            // Fetch purchased book IDs from users/{uid}/purchases
+            userPurchasesRef = FirebaseDatabase.getInstance().getReference("users").child(uid).child("purchases");
             userPurchasesListener = new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
                     if (binding == null) return;
                     java.util.Set<String> purchasedIds = new java.util.HashSet<>();
                     for (DataSnapshot s : snapshot.getChildren()) {
-                        purchasedIds.add(s.getKey());
+                        // Support both possible structures: key or value
+                        String bookId = s.getValue(String.class);
+                        if (bookId != null && !bookId.isEmpty()) {
+                            purchasedIds.add(bookId);
+                        } else if (s.getKey() != null && (s.getValue() == null || Boolean.TRUE.equals(s.getValue()))) {
+                            // If value is null or true, treat key as bookId
+                            purchasedIds.add(s.getKey());
+                        }
                     }
                     loadBooksByIds(purchasedIds);
                 }
@@ -72,11 +85,8 @@ public class CatalogueFragment extends Fragment {
             };
             userPurchasesRef.addValueEventListener(userPurchasesListener);
             return;
-        } else if (uid == null && getArguments() != null && getArguments().getString("categoryFilter") == null) {
-            // User not logged in and trying to access "My Books" - show login prompt
-            showLoginPrompt();
-            return;
         }
+
         // Show all books (for category browsing or general catalogue)
         ebooksRef = FirebaseDatabase.getInstance().getReference("ebooks");
         ebooksListener = new ValueEventListener() {
