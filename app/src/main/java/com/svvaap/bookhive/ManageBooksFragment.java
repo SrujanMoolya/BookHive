@@ -59,8 +59,13 @@ public class ManageBooksFragment extends Fragment {
             public void onDataChange(@NonNull com.google.firebase.database.DataSnapshot snapshot) {
                 purchasedBookIds.clear();
                 for (com.google.firebase.database.DataSnapshot ds : snapshot.getChildren()) {
+                    // Support both structures: value contains bookId OR key is bookId with value=true
                     String bookId = ds.getValue(String.class);
-                    if (bookId != null) purchasedBookIds.add(bookId);
+                    if (bookId != null && !bookId.isEmpty()) {
+                        purchasedBookIds.add(bookId);
+                    } else if (ds.getKey() != null && (ds.getValue() == null || Boolean.TRUE.equals(ds.getValue()))) {
+                        purchasedBookIds.add(ds.getKey());
+                    }
                 }
                 fetchBooksByIds(purchasedBookIds);
             }

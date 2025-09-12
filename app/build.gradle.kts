@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "com.svvaap.bookhive"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.svvaap.bookhive"
-        minSdk = 24
-        targetSdk = 34
-        versionCode = 2
-        versionName = "1.2"
+    minSdk = 24
+    targetSdk = 35
+        versionCode = 3
+        versionName = "1.3"
 
         // Cloudinary config injected from gradle.properties (leave empty to disable until configured)
         buildConfigField(

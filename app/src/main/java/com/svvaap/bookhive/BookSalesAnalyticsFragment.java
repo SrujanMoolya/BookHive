@@ -54,8 +54,8 @@ public class BookSalesAnalyticsFragment extends Fragment {
                 int totalOrders = 0;
 
                 for (DataSnapshot orderSnap : snapshot.getChildren()) {
-                    Order order = orderSnap.getValue(Order.class);
-                    if (order != null && "completed".equals(order.status)) {
+                    Order order = safeMapToOrder(orderSnap);
+                    if (order != null && order.status != null && "completed".equalsIgnoreCase(order.status)) {
                         totalRevenue += order.bookPrice;
                         totalOrders++;
 
@@ -134,6 +134,33 @@ public class BookSalesAnalyticsFragment extends Fragment {
         public String status;
 
         public Order() {}
+    }
+
+    // Defensive mapping for orders (price may be stored as string)
+    private Order safeMapToOrder(DataSnapshot snap) {
+        if (snap == null) return null;
+        Object raw = snap.getValue();
+        if (!(raw instanceof java.util.Map)) {
+            try { return snap.getValue(Order.class); } catch (Exception e) { return null; }
+        }
+        java.util.Map map = (java.util.Map) raw;
+        Order o = new Order();
+        o.bookId = asString(map.get("bookId"));
+        o.bookTitle = asString(map.get("bookTitle"));
+        o.bookAuthor = asString(map.get("bookAuthor"));
+        o.status = asString(map.get("status"));
+        o.bookPrice = asDouble(map.get("bookPrice"));
+        return o;
+    }
+
+    private String asString(Object v) { return v == null ? null : String.valueOf(v); }
+    private double asDouble(Object v) {
+        if (v == null) return 0d;
+        if (v instanceof Number) return ((Number)v).doubleValue();
+        if (v instanceof String) {
+            try { return Double.parseDouble(((String)v).trim()); } catch (Exception ignored) {}
+        }
+        return 0d;
     }
 
     // BookSale adapter
