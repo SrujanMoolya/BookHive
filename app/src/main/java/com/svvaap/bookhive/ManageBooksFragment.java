@@ -236,7 +236,7 @@ public class ManageBooksFragment extends Fragment {
                 bookTitleText.setText(book.title != null ? book.title : "Unknown Title");
                 bookAuthorText.setText(book.author != null ? book.author : "Unknown Author");
                 bookCategoryText.setText(book.category != null ? book.category : "Unknown Category");
-                bookPriceText.setText("$" + book.price);
+                bookPriceText.setText("₹" + book.price);
                 bookVisibilityText.setText(book.visibility != null ? book.visibility.toUpperCase() : "PRIVATE");
 
                 // Set visibility color using context

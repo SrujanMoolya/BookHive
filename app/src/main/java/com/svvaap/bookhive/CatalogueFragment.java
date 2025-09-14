@@ -3,6 +3,7 @@ package com.svvaap.bookhive;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +13,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 
 import com.bumptech.glide.Glide;
+import com.google.firebase.auth.FirebaseAuth;
 import com.svvaap.bookhive.databinding.FragmentCatalogueBinding;
 import com.svvaap.bookhive.databinding.ItemBookBinding;
 import com.google.firebase.database.DataSnapshot;
@@ -26,16 +28,20 @@ import java.util.List;
 public class CatalogueFragment extends Fragment {
     private FragmentCatalogueBinding binding;
     private List<Book> allBooks = new ArrayList<>();
+
     private BookAdapter adapter;
     private DatabaseReference ebooksRef;
     private ValueEventListener ebooksListener;
     private DatabaseReference userPurchasesRef;
     private ValueEventListener userPurchasesListener;
 
+
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentCatalogueBinding.inflate(inflater, container, false);
         setupRecyclerView();
+
         fetchBooksFromFirebase();
         setupSearch();
         applyIncomingCategoryFilterIfAny();
@@ -51,72 +57,113 @@ public class CatalogueFragment extends Fragment {
         filterByCategory(category);
     }
 
-    private void fetchBooksFromFirebase() {
-        String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
-        Bundle args = getArguments();
-        boolean isMyBooksView = args != null && args.getBoolean("myBooksOnly", false);
+//    private void fetchBooksFromFirebase() {
+//        String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
+//        Bundle args = getArguments();
+//        boolean isMyBooksView = args != null && args.getBoolean("myBooksOnly", false);
+//
+//        if (isMyBooksView) {
+//            if (uid == null) {
+//                showLoginPrompt();
+//                return;
+//            }
+//            // Fetch purchased book IDs from users/{uid}/purchases
+//            userPurchasesRef = FirebaseDatabase.getInstance().getReference("purchases").child(uid);
+//            userPurchasesListener = new ValueEventListener() {
+//                @Override
+//                public void onDataChange(@NonNull DataSnapshot snapshot) {
+//                    if (binding == null) return;
+//                    java.util.Set<String> purchasedIds = new java.util.HashSet<>();
+//                    for (DataSnapshot s : snapshot.getChildren()) {
+//                        // Support both possible structures: key or value
+//                        String bookId = s.getValue(String.class);
+//                        if (bookId != null && !bookId.isEmpty()) {
+//                            purchasedIds.add(bookId);
+//                        } else if (s.getKey() != null && (s.getValue() == null || Boolean.TRUE.equals(s.getValue()))) {
+//                            // If value is null or true, treat key as bookId
+//                            purchasedIds.add(s.getKey());
+//                        }
+//                    }
+//                    loadBooksByIds(purchasedIds);
+//                }
+//                @Override
+//                public void onCancelled(@NonNull DatabaseError error) {}
+//            };
+//            userPurchasesRef.addValueEventListener(userPurchasesListener);
+//            return;
+//        }
+//
+//        // Show all books (for category browsing or general catalogue)
+//        ebooksRef = FirebaseDatabase.getInstance().getReference("ebooks");
+//        ebooksListener = new ValueEventListener() {
+//            @Override
+//            public void onDataChange(@NonNull DataSnapshot snapshot) {
+//                if (binding == null) return;
+//                allBooks.clear();
+//                for (DataSnapshot snap : snapshot.getChildren()) {
+//                    Book book = safeMapToBook(snap);
+//                    if (book != null) { book.id = snap.getKey(); allBooks.add(book); }
+//                }
+//                // If opened via category filter keep it applied, else show all
+//                Bundle args = getArguments();
+//                if (args != null) {
+//                    String category = args.getString("categoryFilter", null);
+//                    if (category != null && !category.isEmpty()) {
+//                        filterByCategory(category);
+//                    } else {
+//                        adapter.updateBooks(new ArrayList<>(allBooks));
+//                    }
+//                } else {
+//                    adapter.updateBooks(new ArrayList<>(allBooks));
+//                }
+//                safeSetNoBooksVisibility(allBooks.isEmpty());
+//            }
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError error) {}
+//        };
+//        ebooksRef.addValueEventListener(ebooksListener);
+//    }
+private void fetchBooksFromFirebase() {
+    String uid = FirebaseAuth.getInstance().getCurrentUser() != null
+            ? FirebaseAuth.getInstance().getCurrentUser().getUid()
+            : null;
 
-        if (isMyBooksView) {
-            if (uid == null) {
-                showLoginPrompt();
-                return;
-            }
-            // Fetch purchased book IDs from users/{uid}/purchases
-            userPurchasesRef = FirebaseDatabase.getInstance().getReference("users").child(uid).child("purchases");
-            userPurchasesListener = new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    if (binding == null) return;
-                    java.util.Set<String> purchasedIds = new java.util.HashSet<>();
-                    for (DataSnapshot s : snapshot.getChildren()) {
-                        // Support both possible structures: key or value
-                        String bookId = s.getValue(String.class);
-                        if (bookId != null && !bookId.isEmpty()) {
-                            purchasedIds.add(bookId);
-                        } else if (s.getKey() != null && (s.getValue() == null || Boolean.TRUE.equals(s.getValue()))) {
-                            // If value is null or true, treat key as bookId
-                            purchasedIds.add(s.getKey());
-                        }
-                    }
-                    loadBooksByIds(purchasedIds);
+    if (uid == null) {
+        showLoginPrompt();
+        return;
+    }
+
+    // ✅ Always read only this user's purchases
+    DatabaseReference purchasesRef = FirebaseDatabase.getInstance()
+            .getReference("purchases")
+            .child(uid);
+
+    userPurchasesListener = new ValueEventListener() {
+        @Override
+        public void onDataChange(@NonNull DataSnapshot snapshot) {
+            if (binding == null) return;
+
+            java.util.Set<String> purchasedIds = new java.util.HashSet<>();
+            for (DataSnapshot s : snapshot.getChildren()) {
+                Boolean purchased = s.getValue(Boolean.class);
+                if (Boolean.TRUE.equals(purchased)) {
+                    purchasedIds.add(s.getKey()); // key = bookId
                 }
-                @Override
-                public void onCancelled(@NonNull DatabaseError error) {}
-            };
-            userPurchasesRef.addValueEventListener(userPurchasesListener);
-            return;
+            }
+
+            // 🔥 Only load purchased books
+            allBooks.clear();
+            loadBooksByIds(purchasedIds);
         }
 
-        // Show all books (for category browsing or general catalogue)
-        ebooksRef = FirebaseDatabase.getInstance().getReference("ebooks");
-        ebooksListener = new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (binding == null) return;
-                allBooks.clear();
-                for (DataSnapshot snap : snapshot.getChildren()) {
-                    Book book = safeMapToBook(snap);
-                    if (book != null) { book.id = snap.getKey(); allBooks.add(book); }
-                }
-                // If opened via category filter keep it applied, else show all
-                Bundle args = getArguments();
-                if (args != null) {
-                    String category = args.getString("categoryFilter", null);
-                    if (category != null && !category.isEmpty()) {
-                        filterByCategory(category);
-                    } else {
-                        adapter.updateBooks(new ArrayList<>(allBooks));
-                    }
-                } else {
-                    adapter.updateBooks(new ArrayList<>(allBooks));
-                }
-                safeSetNoBooksVisibility(allBooks.isEmpty());
-            }
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
-        };
-        ebooksRef.addValueEventListener(ebooksListener);
-    }
+        @Override
+        public void onCancelled(@NonNull DatabaseError error) {}
+    };
+
+    purchasesRef.addValueEventListener(userPurchasesListener);
+}
+
+
 
     private void showLoginPrompt() {
         if (binding == null) return;
@@ -160,26 +207,39 @@ public class CatalogueFragment extends Fragment {
     }
 
     private void loadBooksByIds(java.util.Set<String> ids) {
+        Log.d("pids", ids.toString());
+
         DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("ebooks");
         dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (binding == null) return;
-                allBooks.clear();
+
+                List<Book> purchasedBooks = new ArrayList<>(); // <-- use local list, not allBooks
+
                 for (DataSnapshot snap : snapshot.getChildren()) {
                     String id = snap.getKey();
                     if (id != null && ids.contains(id)) {
                         Book book = safeMapToBook(snap);
-                        if (book != null) { book.id = id; allBooks.add(book); }
+                        if (book != null) {
+                            book.id = id;
+                            purchasedBooks.add(book);
+                        }
                     }
                 }
-                adapter.updateBooks(new ArrayList<>(allBooks));
-                safeSetNoBooksVisibility(allBooks.isEmpty());
+
+                // Replace adapter data with only purchased books
+                allBooks.clear();
+                allBooks.addAll(purchasedBooks);
+                adapter.updateBooks(new ArrayList<>(purchasedBooks));
+                safeSetNoBooksVisibility(purchasedBooks.isEmpty());
             }
+
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
+
 
     private void setupRecyclerView() {
         adapter = new BookAdapter(new ArrayList<>(allBooks));

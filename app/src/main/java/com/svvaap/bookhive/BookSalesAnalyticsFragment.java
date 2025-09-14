@@ -88,7 +88,7 @@ public class BookSalesAnalyticsFragment extends Fragment {
                 Collections.sort(bookSales, (a, b) -> Double.compare(b.revenue, a.revenue));
 
                 // Update UI
-                binding.totalRevenueText.setText("$" + String.format("%.2f", totalRevenue));
+                binding.totalRevenueText.setText("₹" + String.format("%.2f", totalRevenue));
                 binding.totalOrdersText.setText(String.valueOf(totalOrders));
                 binding.topBooksText.setText("Top " + Math.min(bookSales.size(), 5) + " Books");
 
@@ -206,7 +206,7 @@ public class BookSalesAnalyticsFragment extends Fragment {
                 bookTitleText.setText(bookSale.bookTitle != null ? bookSale.bookTitle : "Unknown Book");
                 bookAuthorText.setText(bookSale.bookAuthor != null ? bookSale.bookAuthor : "Unknown Author");
                 salesCountText.setText("Sold: " + bookSale.salesCount);
-                revenueText.setText("$" + String.format("%.2f", bookSale.revenue));
+                revenueText.setText("₹" + String.format("%.2f", bookSale.revenue));
                 
                 // Set rank color for top 3
                 int rankColor;

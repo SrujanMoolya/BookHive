@@ -135,7 +135,7 @@ public class ViewOrdersFragment extends Fragment {
                 bookTitleText.setText(order.bookTitle != null ? order.bookTitle : "Unknown Book");
                 orderDateText.setText(order.orderDate != null ? order.orderDate : "Unknown Date");
                 statusText.setText(order.status != null ? order.status.toUpperCase() : "PENDING");
-                priceText.setText("$" + order.bookPrice);
+                priceText.setText("₹" + order.bookPrice);
 
                 // Set status color
                 int statusColor;

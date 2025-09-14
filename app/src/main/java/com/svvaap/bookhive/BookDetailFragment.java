@@ -78,18 +78,18 @@ public class BookDetailFragment extends Fragment {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 book = safeMapToBook(snapshot);
                 if (book != null) {
-                    titleView.setText(book.title);
-                    authorView.setText(book.author);
-                    descriptionView.setText(book.description);
-                    categoryView.setText(book.category != null ? book.category : "");
-                    languageView.setText(book.language != null ? book.language : "");
+                    titleView.setText("Title : " +book.title);
+                    authorView.setText("Author : " +book.author);
+                    descriptionView.setText("Description : \n" +book.description);
+                    categoryView.setText(book.category != null ? ("Category : " +book.category ): "");
+                    languageView.setText(book.language != null ? ("language : " +book.language ): "");
                     uploadDateView.setText(book.uploadDate != null ? ("Uploaded: " + book.uploadDate) : "");
-                    priceView.setText(String.format(java.util.Locale.getDefault(), "Price: $%.2f", book.price));
+                    priceView.setText(String.format(java.util.Locale.getDefault(), "Price: ₹%.2f", book.price));
                     Glide.with(coverView.getContext())
                         .load(book.coverImageUrl)
                         .placeholder(R.drawable.sample_book_cover)
                         .into(coverView);
-                    // For demo, set progress to 0
+//                     For demo, set progress to 0
                     progressView.setText("Progress: 0%");
                     readingProgressBar.setProgress(0);
                     updatePurchaseStatus();

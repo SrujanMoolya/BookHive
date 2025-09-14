@@ -82,7 +82,7 @@
                     android:id="@+id/book_detail_price"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Price: $0.00"
+                    android:text="Price: ₹0.00"
                     android:textSize="16sp"
                     android:textColor="#388E3C"
                     android:layout_marginBottom="8dp"/>
@@ -113,17 +113,19 @@
                     android:id="@+id/book_detail_progress"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
                     android:text="Progress: 0%"
-                    android:layout_marginBottom="4dp"/>
+                    android:visibility="gone" />
 
                 <ProgressBar
                     android:id="@+id/reading_progress_bar"
                     style="@android:style/Widget.ProgressBar.Horizontal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
                     android:max="100"
                     android:progress="0"
-                    android:layout_marginBottom="16dp"/>
+                    android:visibility="gone" />
 
                 <Button
                     android:id="@+id/read_book_button"
